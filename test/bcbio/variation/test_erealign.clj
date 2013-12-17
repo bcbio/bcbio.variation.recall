@@ -28,5 +28,5 @@
     (erealign/by-region region vcf-files bam-file ref-file work-dir) => out-file))
 
 (facts "Identify split breakpoints for parallel execution"
-  (rsplit/vcf-breakpoints (first vcf-files) ref-file work-dir)
-  (rsplit/group-breakpoints vcf-files ref-file work-dir))
+  (let [out-file (str (io/file data-dir "work" "split" "NA12878-10-freebayes-combo-3-pregions.bed"))]
+    (rsplit/group-pregions vcf-files ref-file work-dir) => out-file))

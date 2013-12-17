@@ -19,14 +19,14 @@ External command line programs provide the underlying algorithms. This tool
 is a framework for pulling them together. The following programs need to
 be on your path:
 
-- [bedtools][bedtools]
-- [vcflib][vcflib]
-- [bcftools (0.20+, with htslib)][bcftools]
 - [freebayes][freebayes]
 - [glia][glia]
+- [vcflib][vcflib]
+- [bedtools][bedtools]
+- [bcftools (0.20+, with htslib)][bcftools]
 - [samtools][samtools]
 
-The [[bcbio-nextgen][bcbio-nextgen]] pipeline installs all this software automatically.
+The [bcbio-nextgen][bcbio-nextgen] pipeline installs all this software automatically.
 
 [bcbio-nextgen]: https://github.com/chapmanb/bcbio-nextgen
 [bedtools]: http://bedtools.readthedocs.org/en/latest/

@@ -4,23 +4,29 @@
             [bcbio.run.fsp :as fsp]
             [bcbio.run.itx :as itx]
             [bcbio.variation.recall.vcfutils :as vcfutils]
+            [clojure.core.strint :refer [<<]]
             [clojure.java.io :as io]
             [clojure.string :as string]
             [schema.core :as s]))
+
+(defn- fai->bed
+  [fai-file]
+  (<< "cut -f 1-2 ~{fai-file} | awk -F $'\t' '{OFS=FS} {print $1,0,$2}'"))
+
+(def ^{:private true} merge-size 500)
 
 (s/defn ^:always-validate vcf-breakpoints
   "Prepare BED file of non-variant regions in the input VCF as parallel breakpoints.
    Uses bedtools to find covered regions by the VCF and subtracts this from the
    full reference genome to convert to non-covered/non-variant-call regions."
   ([vcf-file sample :- s/String ref-file work-dir]
-     (let [merge-size 500
-           split-dir (fsp/safe-mkdir (io/file work-dir "split" sample))
+     (let [split-dir (fsp/safe-mkdir (io/file work-dir "split" sample))
            sample-vcf (vcfutils/subset-to-sample vcf-file sample split-dir)
            out-file (fsp/add-file-part sample-vcf "splitpoints" split-dir ".bed")
            fai-file (gref/fasta-idx ref-file)]
        (itx/run-cmd out-file
                     "bedtools subtract "
-                    "-a <(cut -f 1-2 ~{fai-file} | awk -F $'\t' '{OFS=FS} {print $1,0,$2}') "
+                    "-a <(~{(fai->bed fai-file)}) "
                     "-b <(bedtools genomecov -i ~{sample-vcf} -g ~{fai-file} -bg | "
                     "     bedtools merge -d ~{merge-size}) "
                     "> ~{out-file}")))
@@ -41,4 +47,18 @@
     (itx/run-cmd out-file
                  "bedtools multiinter -i ~{str-bp-beds} | "
                  "awk -F $'\t' '{OFS=FS} $4 >= ~{(count bp-beds)} {print $1,$2,$3}' "
+                 "> ~{out-file}")))
+
+(defn group-pregions
+  "Provide BED file of common analysis regions across all VCFs for parallel analysis.
+   Creates pad 200bp on either side of variants to pull in surrounding region for re-analysis."
+  [vcf-files ref-file work-dir]
+  (let [pad-size 200
+        bp-file (group-breakpoints vcf-files ref-file work-dir)
+        out-file (fsp/add-file-part (fsp/remove-file-part bp-file "splitpoints") "pregions")
+        fai-file (gref/fasta-idx ref-file)]
+    (itx/run-cmd out-file
+                 "bedtools subtract -a <(~{(fai->bed fai-file)}) -b ~{bp-file} | "
+                 "bedtools slop -b ~{pad-size} -g ~{fai-file} -i | "
+                 "bedtools merge -d ~{merge-size} "
                  "> ~{out-file}")))

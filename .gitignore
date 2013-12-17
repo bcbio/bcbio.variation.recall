@@ -6,7 +6,10 @@ pom.xml
 pom.xml.asc
 *.jar
 *.class
+.lein-env
 .lein-deps-sum
 .lein-failures
 .lein-plugins
 .lein-repl-history
+.nrepl-port
+/test/data/ensemble/work
