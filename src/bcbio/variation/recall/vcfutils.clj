@@ -10,7 +10,7 @@
   "Plain or gzip input reader."
   [f]
   (if (.endsWith f ".gz")
-    (java.util.zip.GZIPInputStream. (io/input-stream f))
+    (io/reader (java.util.zip.GZIPInputStream. (io/input-stream f)))
     (io/reader f)))
 
 (defn get-samples
