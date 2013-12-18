@@ -27,6 +27,22 @@
     (when (= 1 (count samples))
       (first samples))))
 
+(defn duplicate-samples
+  "Retrieve any duplicate samples in the input VCF files."
+  [vcf-files]
+  (->> vcf-files
+       (mapcat get-samples)
+       frequencies
+       (filter (fn [[x n]] (> n 1)))
+       (map first)))
+
+(defn ensure-no-dup-samples
+  "Ensure there are sample name duplicates in the VCF files"
+  [vcf-files]
+  (let [dups (duplicate-samples vcf-files)]
+    (assert (empty? dups) (format "Found duplicate samples %s in VCFs for merging: %s"
+                                  (vec dups) (vec vcf-files)))))
+
 (defn bcftools-out-type
   [f]
   (if (.endsWith f ".gz") "z" "v"))

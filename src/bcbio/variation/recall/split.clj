@@ -9,11 +9,11 @@
             [clojure.string :as string]
             [schema.core :as s]))
 
+(def ^{:private true} merge-size 500)
+
 (defn- fai->bed
   [fai-file]
   (<< "cut -f 1-2 ~{fai-file} | awk -F $'\t' '{OFS=FS} {print $1,0,$2}'"))
-
-(def ^{:private true} merge-size 500)
 
 (s/defn ^:always-validate vcf-breakpoints
   "Prepare BED file of non-variant regions in the input VCF as parallel breakpoints.
