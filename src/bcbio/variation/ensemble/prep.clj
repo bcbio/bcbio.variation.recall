@@ -24,7 +24,7 @@
 (defn bgzip-index-vcf
   "Prepare a VCF file for positional query with bgzip and tabix indexing."
   [vcf-file & {:keys [remove-orig?]}]
-  (let [out-file (str vcf-file ".gz")]
+  (let [out-file (if (.endsWith vcf-file ".gz") vcf-file (str vcf-file ".gz"))]
     (itx/run-cmd out-file "bgzip -c ~{vcf-file} > ~{out-file}")
     (when remove-orig?
       (fsp/remove-path vcf-file))

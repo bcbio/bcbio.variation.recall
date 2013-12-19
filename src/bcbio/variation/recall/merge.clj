@@ -22,6 +22,22 @@
                  "-r ~{(eprep/region->samstr region)} ~{vcf-file-str} "
                  "> ~{out-file}")))
 
+(defmulti concatenate-vcfs
+  "Concatenate VCF files in supplied order, handling bgzip and plain text."
+  (fn [_ out-file]
+    (if (.endsWith out-file ".gz") :bgzip :default)))
+
+(defmethod concatenate-vcfs :bgzip
+  [vcf-files out-file]
+  (eprep/bgzip-index-vcf (concatenate-vcfs vcf-files (subs out-file 0 (.lastIndexOf out-file ".gz")))
+                         :remove-orig? true))
+
+(defmethod concatenate-vcfs :default
+  [vcf-files out-file]
+  (let [str-vcf-files (string/join " " (rmap eprep/bgzip-index-vcf vcf-files))]
+    (itx/run-cmd out-file
+                 "vcfcat ~{str-vcf-files} > ~{out-file}")))
+
 (defn combine-vcfs
   "Merge multiple VCF files together in parallel over genomic regions."
   [orig-vcf-files ref-file work-dir]
@@ -34,5 +50,4 @@
         merge-parts (reduce (fn [coll region]
                               (conj coll (region-merge vcf-files region merge-dir out-file)))
                             [] (bed/reader region-bed))]
-    (println (count merge-parts))
-    out-file))
+    (concatenate-vcfs merge-parts out-file)))

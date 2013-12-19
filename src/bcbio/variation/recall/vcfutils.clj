@@ -6,7 +6,7 @@
             [clojure.string :as string]
             [schema.core :as s]))
 
-(defn- pog-reader
+(defn pog-reader
   "Plain or gzip input reader."
   [f]
   (if (.endsWith f ".gz")
