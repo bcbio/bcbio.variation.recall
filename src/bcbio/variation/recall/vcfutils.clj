@@ -3,8 +3,7 @@
   (:require [bcbio.run.fsp :as fsp]
             [bcbio.run.itx :as itx]
             [clojure.java.io :as io]
-            [clojure.string :as string]
-            [schema.core :as s]))
+            [clojure.string :as string]))
 
 (defn pog-reader
   "Plain or gzip input reader."

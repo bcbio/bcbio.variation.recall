@@ -35,5 +35,6 @@
     (rsplit/group-pregions vcf-files ref-file work-dir) => out-file))
 
 (facts "Merge multiple input files, running in parallel over small regions"
-  (let [out-file (str (io/file data-dir "work" "split" "NA12878-10-freebayes-combo-2-merge.vcf.gz"))]
-    (merge/combine-vcfs [(first vcf-files) merge-vcf-file] ref-file work-dir) => out-file))
+  (let [out-file (str (io/file data-dir "work" "split" "NA12878-10-freebayes-combo-2-merge.vcf.gz"))
+        config {:cores 1}]
+    (merge/combine-vcfs [(first vcf-files) merge-vcf-file] ref-file work-dir config) => out-file))

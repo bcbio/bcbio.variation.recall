@@ -3,8 +3,11 @@
   :url "https://github.com/chapmanb/bcbio.variation.recall"
   :license {:name "MIT" :url "http://www.opensource.org/licenses/mit-license.html"}
   :dependencies [[org.clojure/clojure "1.5.1"]
-                 [bcbio.run "0.0.1-SNAPSHOT"]
-                 [prismatic/schema "0.1.9"]]
+                 [org.clojure/tools.cli "0.3.0"]
+                 [bcbio.run "0.0.1-SNAPSHOT"]]
   :plugins [[lein-midje "3.1.3"]]
   :profiles {:dev {:dependencies
-                   [[midje "1.6.0"]]}})
+                   [[midje "1.6.0"]]}
+             :uberjar {:aot [bcbio.variation.recall.main]}}
+  :main bcbio.variation.recall.main
+  :uberjar-name "bcbio-variation-recall-%s.jar")

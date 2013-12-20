@@ -15,18 +15,22 @@
   (p/coll-reduce [coll f init]
     (with-open [rdr (io/reader bed-file)]
       (loop [line-iter (line-seq rdr)
-             v init]
+             v init
+             i 0]
         (if (empty? line-iter)
           v
-          (let [r (f v (first line-iter))]
+          (let [r (f v [i (first line-iter)])]
             (if (reduced? r)
               @r
-              (recur (rest line-iter) r))))))))
+              (recur (rest line-iter) r (inc i)))))))))
 
 (defn reader
   "High level bed reader that splits lines into chrom/start/end map"
   [bed-file]
-  (r/map (fn [line]
-           (let [[chrom start end] (take 3 (string/split line #"\t"))]
-             {:chrom chrom :start (Integer/parseInt start) :end (Integer/parseInt end)}))
+  (r/fold (r/monoid (fn [coll [i line]]
+                      (let [[chrom start end] (take 3 (string/split line #"\t"))]
+                        (cons {:chrom chrom :start (Integer/parseInt start) :end (Integer/parseInt end)
+                                :i i}
+                              coll)))
+                    (fn [] []))
          (BedReader. bed-file)))

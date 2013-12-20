@@ -6,8 +6,7 @@
             [bcbio.variation.recall.vcfutils :as vcfutils]
             [clojure.core.strint :refer [<<]]
             [clojure.java.io :as io]
-            [clojure.string :as string]
-            [schema.core :as s]))
+            [clojure.string :as string]))
 
 (def ^{:private true} merge-size 500)
 
@@ -15,11 +14,11 @@
   [fai-file]
   (<< "cut -f 1-2 ~{fai-file} | awk -F $'\t' '{OFS=FS} {print $1,0,$2}'"))
 
-(s/defn ^:always-validate vcf-breakpoints
+(defn vcf-breakpoints
   "Prepare BED file of non-variant regions in the input VCF as parallel breakpoints.
    Uses bedtools to find covered regions by the VCF and subtracts this from the
    full reference genome to convert to non-covered/non-variant-call regions."
-  ([vcf-file sample :- s/String ref-file work-dir]
+  ([vcf-file sample ref-file work-dir]
      (let [split-dir (fsp/safe-mkdir (io/file work-dir "split" sample))
            sample-vcf (vcfutils/subset-to-sample vcf-file sample split-dir)
            out-file (fsp/add-file-part sample-vcf "splitpoints" split-dir ".bed")
