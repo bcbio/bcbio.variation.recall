@@ -12,6 +12,7 @@ pom.xml.asc
 .lein-plugins
 .lein-repl-history
 .nrepl-port
+/bin/bcbio-variation-recall
 /test/data/ensemble/work
 /test/data/ensemble/*.gz
 /test/data/ensemble/*.gz.tbi

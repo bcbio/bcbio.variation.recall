@@ -15,9 +15,33 @@ This is a work in progress.
 
 ## Usage
 
-External command line programs provide the underlying algorithms. This tool
-is a framework for pulling them together. The following programs need to
-be on your path:
+The executable `bcbio-variation-recall` bash script contains a ready to run jar
+file. Pre-built distributions will be available. To create a development version
+run `make` and the executable will be available in the `bin` directory. This
+requires [leiningen].
+
+[leiningen]: http://leiningen.org/
+
+### Merge
+
+    Merge multiple VCF files together, running in parallel over genomic regions.
+
+    Usage: bcbio.variation.recall merge [options] out-file ref-file vcf-files
+
+      out-file:  VCF (or bgzipped VCF) file to write merged output to
+      ref-file:  FASTA format genome reference file
+      vcf-files: VCF files to merge. Can be specified on the command line
+                 or as a text file containing paths to files for processing
+
+    Options:
+      -c, --cores  Number of cores to use
+      -h, --help
+
+## Thank you
+
+External software provides the underlying algorithms. This tool is a framework
+for pulling them together. The following command line programs need to be on
+your path:
 
 - [freebayes][freebayes]
 - [glia][glia]

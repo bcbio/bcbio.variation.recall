@@ -1,0 +1,42 @@
+#!/bin/bash
+# bcbio.variation.recall executable shell script
+# https://github.com/chapmanb/bcbio.variation.recall
+
+set -o errexit -o nounset -o pipefail
+export LC_ALL=en_US.UTF-8
+
+jar="$(cd "$(dirname "$0")" && pwd -P)"/"$(basename "$0")"
+
+java=java
+if test -n "$JAVA_HOME"; then
+    java="$JAVA_HOME/bin/java"
+fi
+
+default_jvm_mem_opts=( -Xms512m -Xmx1g )
+
+# Separate out java specific options on the command line
+# Doesn't work as intended. Bummer.
+# jvm_mem_opts=()
+# jvm_other_opts=()
+# pass_args=()
+# for x in "$@"
+# do
+#     if [[ $x = -Xm* ]]
+#     then
+#         jvm_mem_opts+=($x)
+#     elif [[ $x = -D* ]]
+#     then
+#         jvm_other_opts+=($x)
+#     else
+#         pass_args+=($x)
+#     fi
+# done
+# if [ ${#jvm_mem_opts[@]} -eq 0 ]; then
+#     jvm_mem_opts=${default_jvm_mem_opts[@]}
+# fi
+#
+# exec "$java" "${jvm_mem_opts[@]}" "${jvm_other_opts[@]-}" -jar "$jar" "${pass_args[@]-}"
+
+exec "$java" "${default_jvm_mem_opts[@]}" -jar "$jar" "$@"
+
+exit

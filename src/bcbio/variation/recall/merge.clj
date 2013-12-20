@@ -42,13 +42,11 @@
 
 (defn combine-vcfs
   "Merge multiple VCF files together in parallel over genomic regions."
-  [orig-vcf-files ref-file work-dir config]
+  [orig-vcf-files ref-file out-file config]
   (vcfutils/ensure-no-dup-samples orig-vcf-files)
   (let [vcf-files (rmap eprep/bgzip-index-vcf orig-vcf-files (:cores config))
-        region-bed (rsplit/group-pregions vcf-files ref-file work-dir)
-        merge-dir (fsp/safe-mkdir (io/file (fs/parent region-bed) "merge"))
-        out-file (fsp/add-file-part (fsp/remove-file-part region-bed "pregions")
-                                    "merge" nil ".vcf.gz")
+        merge-dir (fsp/safe-mkdir (io/file (fs/parent out-file) "merge"))
+        region-bed (rsplit/group-pregions vcf-files ref-file merge-dir)
         merge-parts (->> (rmap (fn [region]
                                  [(:i region) (region-merge vcf-files region merge-dir out-file)])
                                (bed/reader region-bed)
@@ -78,10 +76,12 @@
 (defn- usage [options-summary]
   (->> ["Merge multiple VCF files together, running in parallel over genomic regions."
         ""
-        "Usage: merge [options] out-file ref-file vcf-files-or-list"
+        "Usage: bcbio-variation-recall merge [options] out-file ref-file vcf-files"
         ""
-        "vcf-files-or-list can be VCFs to merge specified on the command line or a text"
-        "file containing the names of VCFs."
+        "  out-file:  VCF (or bgzipped VCF) file to write merged output to"
+        "  ref-file:  FASTA format genome reference file"
+        "  vcf-files: VCF files to merge. Can be specified on the command line "
+        "             or as a text file containing paths to files for processing"
         ""
         "Options:"
         options-summary]

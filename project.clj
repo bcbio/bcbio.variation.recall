@@ -9,5 +9,4 @@
   :profiles {:dev {:dependencies
                    [[midje "1.6.0"]]}
              :uberjar {:aot [bcbio.variation.recall.main]}}
-  :main bcbio.variation.recall.main
-  :uberjar-name "bcbio-variation-recall-%s.jar")
+  :main ^:skip-aot bcbio.variation.recall.main)
