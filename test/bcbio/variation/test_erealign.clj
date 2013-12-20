@@ -18,7 +18,8 @@
                               ["NA12878-10-freebayes.vcf" "NA12878-10-gatk.vcf"
                                "NA12878-10-gatk-haplotype.vcf"])
                merge-vcf-file (str (io/file r-data-dir "NA12878-1-10-gatk-haplotype.vcf"))
-               work-dir (str (io/file data-dir "work"))]
+               work-dir (str (io/file data-dir "work"))
+               config {:cores 1}]
            (doseq [x (concat [work-dir]
                              (map #(str % ".gz") (concat [merge-vcf-file] vcf-files))
                              (map #(str % ".gz.tbi") (concat [merge-vcf-file] vcf-files)))]
@@ -32,9 +33,8 @@
 
 (facts "Identify split breakpoints for parallel execution"
   (let [out-file (str (io/file data-dir "work" "split" "NA12878-10-freebayes-combo-3-pregions.bed"))]
-    (rsplit/group-pregions vcf-files ref-file work-dir) => out-file))
+    (rsplit/group-pregions vcf-files ref-file work-dir config) => out-file))
 
 (facts "Merge multiple input files, running in parallel over small regions"
-  (let [out-file (str (io/file data-dir "work" "NA12878-10-merge.vcf.gz"))
-        config {:cores 1}]
+  (let [out-file (str (io/file data-dir "work" "NA12878-10-merge.vcf.gz"))]
     (merge/combine-vcfs [(first vcf-files) merge-vcf-file] ref-file out-file config) => out-file))

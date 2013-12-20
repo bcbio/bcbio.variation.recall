@@ -43,10 +43,10 @@
 (defn combine-vcfs
   "Merge multiple VCF files together in parallel over genomic regions."
   [orig-vcf-files ref-file out-file config]
-  (vcfutils/ensure-no-dup-samples orig-vcf-files)
   (let [vcf-files (rmap eprep/bgzip-index-vcf orig-vcf-files (:cores config))
+        _ (vcfutils/ensure-no-dup-samples vcf-files)
         merge-dir (fsp/safe-mkdir (io/file (fs/parent out-file) "merge"))
-        region-bed (rsplit/group-pregions vcf-files ref-file merge-dir)
+        region-bed (rsplit/group-pregions vcf-files ref-file merge-dir config)
         merge-parts (->> (rmap (fn [region]
                                  [(:i region) (region-merge vcf-files region merge-dir out-file)])
                                (bed/reader region-bed)
@@ -61,11 +61,16 @@
   (with-open [rdr (vcfutils/pog-reader f)]
     (.startsWith (first (line-seq rdr)) "##fileformat=VCF")))
 
+(defn- vcf-exists?
+  [f]
+  (or (and (fs/exists? f) (fs/file? f))
+      (and (fs/exists? (str f ".gz")) (fs/file? (str f ".gz")))))
+
 (defn- get-vcf-flex
   "Handle retrieving VCFs from either a single file or text-based list of files."
   [f]
   (cond
-   (or (not (fs/exists? f)) (not (fs/file? f))) [f]
+   (not (vcf-exists? f)) [f]
    (is-vcf? f) [f]
    :else (with-open [rdr (io/reader f)]
            (->> (line-seq rdr)
@@ -97,7 +102,7 @@
 
 (defn -main [& args]
   (let [{:keys [options arguments errors summary]}
-        (parse-opts args [["-c" "--cores" "Number of cores to use" :default 1
+        (parse-opts args [["-c" "--cores CORES" "Number of cores to use" :default 1
                            :parse-fn #(Integer/parseInt %)]
                           ["-h" "--help"]])]
     (cond
@@ -107,7 +112,7 @@
      (< (count arguments) 3) (exit 1 (usage summary))
      :else (let [[out-file ref-file & vcf-inputs] arguments
                  vcf-files (mapcat get-vcf-flex vcf-inputs)
-                 vcf-missing (remove #(and (fs/exists? %) (fs/file? %)) vcf-files)]
+                 vcf-missing (remove vcf-exists? vcf-files)]
              (cond
               (not (empty? vcf-missing))
               (exit 1 (error-msg (cons "Input VCF files not found:" vcf-missing)))

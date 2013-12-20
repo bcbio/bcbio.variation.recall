@@ -2,14 +2,15 @@
 # bcbio.variation.recall executable shell script
 # https://github.com/chapmanb/bcbio.variation.recall
 
-set -o errexit -o nounset -o pipefail
+set -o pipefail
 export LC_ALL=en_US.UTF-8
 
 jar="$(cd "$(dirname "$0")" && pwd -P)"/"$(basename "$0")"
 
 java=java
-if test -n "$JAVA_HOME"; then
-    java="$JAVA_HOME/bin/java"
+if [ -e "$JAVA_HOME/bin/java" ]
+then
+java="$JAVA_HOME/bin/java"
 fi
 
 default_jvm_mem_opts=( -Xms512m -Xmx1g )
