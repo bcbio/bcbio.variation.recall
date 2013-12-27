@@ -13,16 +13,37 @@
             [clojure.tools.cli :refer [parse-opts]]
             [me.raynes.fs :as fs]))
 
-(defn- region-merge
+(defn- region-merge-outfile
+  "Build output file for regional merge inside of chromosome subdirectory."
+  [region work-dir final-file]
+  (fsp/add-file-part final-file (eprep/region->safestr region)
+                     (fsp/safe-mkdir (io/file work-dir (get region :chrom "nochrom")))))
+
+(defmulti region-merge
   "Perform merge of multiple sample VCFs within a given region."
-  [vcf-files region work-dir final-file]
-  (let [out-file (fsp/add-file-part final-file (eprep/region->safestr region)
-                                    work-dir)
+  (fn [& args]
+    (keyword (first args))))
+
+(defmethod region-merge :bcftools
+  ^{:doc "Merge VCFs within a region using bcftools."}
+  [_ vcf-files region work-dir final-file]
+  (let [out-file (region-merge-outfile region work-dir final-file)
         vcf-file-str (string/join " " vcf-files)]
     (itx/run-cmd out-file
                  "bcftools merge -o ~{(vcfutils/bcftools-out-type out-file)} "
                  "-r ~{(eprep/region->samstr region)} ~{vcf-file-str} "
                  "> ~{out-file}")))
+
+(defmethod region-merge :vcflib
+  ^{:doc "Merge VCFs within a region using tabix and vcflib."}
+  [_ vcf-files region work-dir final-file]
+  (let [out-file (region-merge-outfile region work-dir final-file)
+        vcf-file-str (->> vcf-files
+                          (map #(format "<(tabix -h -p vcf %s %s)" % (eprep/region->samstr region)))
+                          (string/join " "))
+        bgzip-cmd (if (.endsWith out-file ".gz") "| bgzip -c" "")]
+    (itx/run-cmd out-file
+                 "vcfcombine ~{vcf-file-str} | vcfcreatemulti ~{bgzip-cmd} > ~{out-file}")))
 
 (defmulti concatenate-vcfs
   "Concatenate VCF files in supplied order, handling bgzip and plain text."
@@ -48,7 +69,7 @@
         merge-dir (fsp/safe-mkdir (io/file (fs/parent out-file) "merge"))
         region-bed (rsplit/group-pregions vcf-files ref-file merge-dir config)
         merge-parts (->> (rmap (fn [region]
-                                 [(:i region) (region-merge vcf-files region merge-dir out-file)])
+                                 [(:i region) (region-merge :vcflib vcf-files region merge-dir out-file)])
                                (bed/reader region-bed)
                                (:cores config))
                          (map vec)

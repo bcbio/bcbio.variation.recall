@@ -17,7 +17,8 @@
                  "glia -Rr -w 1000 -S 200 -Q 200 -G 4 -f ~{ref-file} -v ~{union-vcf} | "
                  "freebayes -f ~{ref-file} --variant-input ~{union-vcf} "
                  "--min-mapping-quality 1 --min-base-quality 3 --stdin | "
-                 "vcfallelicprimitives > ~{out-file}")
+                 ;"vcffilter -f 'DP > 4' -f 'QUAL > 20.0' -t PASS -F QualDepthFilter | "
+                 "vcfallelicprimitives -t MNP > ~{out-file}")
     out-file))
 
 (defn by-region
