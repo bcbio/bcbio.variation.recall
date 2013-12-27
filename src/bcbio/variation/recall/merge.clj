@@ -34,16 +34,29 @@
                  "-r ~{(eprep/region->samstr region)} ~{vcf-file-str} "
                  "> ~{out-file}")))
 
-(defmethod region-merge :vcflib
-  ^{:doc "Merge VCFs within a region using tabix and vcflib."}
-  [_ vcf-files region work-dir final-file]
-  (let [out-file (region-merge-outfile region work-dir final-file)
-        vcf-file-str (->> vcf-files
-                          (map #(format "<(tabix -h -p vcf %s %s)" % (eprep/region->samstr region)))
+(defn- vcfcombine-batch-cmd
+  "Create a vcfcombine command line for a batched set of vcf-files"
+  [i vcf-files region]
+  (let [vcf-file-str (->> vcf-files
+                          (map #(format "<(tabix -h -p vcf %s %s | vcfcreatemulti)"
+                                        % (eprep/region->samstr region)))
                           (string/join " "))
+        input-pipe (if (zero? i) "" "/dev/stdin ")]
+    (str "vcfcombine " input-pipe vcf-file-str)))
+
+(defmethod region-merge :vcflib
+  ^{:doc "Merge VCFs within a region using tabix and vcflib.
+          Batches merges into groups to avoid issues with concurrent file handles."}
+  [_ vcf-files region work-dir final-file]
+  (let [batch-size 100
+        out-file (region-merge-outfile region work-dir final-file)
+        combine-str (->> vcf-files
+                         (partition-all batch-size)
+                         (map-indexed (fn [i xs] (vcfcombine-batch-cmd i xs region)))
+                         (string/join " | "))
         bgzip-cmd (if (.endsWith out-file ".gz") "| bgzip -c" "")]
     (itx/run-cmd out-file
-                 "vcfcombine ~{vcf-file-str} | vcfcreatemulti ~{bgzip-cmd} > ~{out-file}")))
+                 "~{combine-str} | vcfcreatemulti ~{bgzip-cmd} > ~{out-file}")))
 
 (defmulti concatenate-vcfs
   "Concatenate VCF files in supplied order, handling bgzip and plain text."
