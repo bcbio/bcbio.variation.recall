@@ -19,6 +19,15 @@
   (fsp/add-file-part final-file (eprep/region->safestr region)
                      (fsp/safe-mkdir (io/file work-dir (get region :chrom "nochrom")))))
 
+(defn- prep-vcf-region
+  "Prepare a VCF file for merging, retrieving only the local region of interest."
+  [vcf-file region tmp-dir]
+  (let [out-file (fsp/add-file-part (string/replace vcf-file ".gz" "") (eprep/region->safestr region) tmp-dir)]
+    (itx/run-cmd out-file
+                 "tabix -h -p vcf ~{vcf-file}  ~{(eprep/region->samstr region)} "
+                 "vcfcreatemulti > ~{out-file}")
+    (eprep/bgzip-index-vcf vcf-file)))
+
 (defmulti region-merge
   "Perform merge of multiple sample VCFs within a given region."
   (fn [& args]
@@ -27,36 +36,31 @@
 (defmethod region-merge :bcftools
   ^{:doc "Merge VCFs within a region using bcftools."}
   [_ vcf-files region work-dir final-file]
-  (let [out-file (region-merge-outfile region work-dir final-file)
-        vcf-file-str (string/join " " vcf-files)]
-    (itx/run-cmd out-file
-                 "bcftools merge -o ~{(vcfutils/bcftools-out-type out-file)} "
-                 "-r ~{(eprep/region->samstr region)} ~{vcf-file-str} "
-                 "> ~{out-file}")))
-
-(defn- vcfcombine-batch-cmd
-  "Create a vcfcombine command line for a batched set of vcf-files"
-  [i vcf-files region]
-  (let [vcf-file-str (->> vcf-files
-                          (map #(format "<(tabix -h -p vcf %s %s | vcfcreatemulti)"
-                                        % (eprep/region->samstr region)))
-                          (string/join " "))
-        input-pipe (if (zero? i) "" "/dev/stdin ")]
-    (str "vcfcombine " input-pipe vcf-file-str)))
+  (let [out-file (region-merge-outfile region work-dir final-file)]
+    (when (itx/needs-run? out-file)
+      (itx/with-temp-dir [tmp-dir (fs/parent out-file)]
+        (let [vcf-file-str (->> vcf-files
+                                (map #(prep-vcf-region % region tmp-dir))
+                                (string/join " "))]
+          (itx/run-cmd out-file
+                       "bcftools merge -o ~{(vcfutils/bcftools-out-type out-file)} "
+                       "-r ~{(eprep/region->samstr region)} ~{vcf-file-str} "
+                       "> ~{out-file}"))))
+    out-file))
 
 (defmethod region-merge :vcflib
-  ^{:doc "Merge VCFs within a region using tabix and vcflib.
-          Batches merges into groups to avoid issues with concurrent file handles."}
+  ^{:doc "Merge VCFs within a region using tabix and vcflib"}
   [_ vcf-files region work-dir final-file]
-  (let [batch-size 100
-        out-file (region-merge-outfile region work-dir final-file)
-        combine-str (->> vcf-files
-                         (partition-all batch-size)
-                         (map-indexed (fn [i xs] (vcfcombine-batch-cmd i xs region)))
-                         (string/join " | "))
-        bgzip-cmd (if (.endsWith out-file ".gz") "| bgzip -c" "")]
-    (itx/run-cmd out-file
-                 "~{combine-str} | vcfcreatemulti ~{bgzip-cmd} > ~{out-file}")))
+  (let [out-file (region-merge-outfile region work-dir final-file)]
+    (when (itx/needs-run? out-file)
+      (itx/with-temp-dir [tmp-dir (fs/parent out-file)]
+        (let [prep-vcf-str (->> vcf-files
+                                (map #(prep-vcf-region % region tmp-dir))
+                                (string/join " "))
+              bgzip-cmd (if (.endsWith out-file ".gz") "| bgzip -c" "")]
+          (itx/run-cmd out-file
+                       "vcfcombine ~{prep-vcf-str} | vcfcreatemulti ~{bgzip-cmd} > ~{out-file}"))))
+    out-file))
 
 (defmulti concatenate-vcfs
   "Concatenate VCF files in supplied order, handling bgzip and plain text."
@@ -82,7 +86,7 @@
         merge-dir (fsp/safe-mkdir (io/file (fs/parent out-file) "merge"))
         region-bed (rsplit/group-pregions vcf-files ref-file merge-dir config)
         merge-parts (->> (rmap (fn [region]
-                                 [(:i region) (region-merge :vcflib vcf-files region merge-dir out-file)])
+                                 [(:i region) (region-merge :bcftools vcf-files region merge-dir out-file)])
                                (bed/reader region-bed)
                                (:cores config))
                          (map vec)
