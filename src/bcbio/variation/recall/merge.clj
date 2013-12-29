@@ -48,7 +48,7 @@
 (defmethod region-merge :bcftools
   ^{:doc "Merge VCFs within a region using bcftools."}
   [_ vcf-files region work-dir final-file]
-  (let [group-size 200
+  (let [group-size 100
         out-file (region-merge-outfile region work-dir final-file)]
     (when (itx/needs-run? out-file)
       (itx/with-temp-dir [tmp-dir (fs/parent out-file)]
