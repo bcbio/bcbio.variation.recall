@@ -25,27 +25,42 @@
   (let [out-file (fsp/add-file-part (string/replace vcf-file ".gz" "") (eprep/region->safestr region) tmp-dir)]
     (itx/run-cmd out-file
                  "tabix -h -p vcf ~{vcf-file}  ~{(eprep/region->samstr region)} "
-                 "vcfcreatemulti > ~{out-file}")
-    (eprep/bgzip-index-vcf vcf-file)))
+                 "vcfcreatemulti > ~{out-file}")))
 
 (defmulti region-merge
   "Perform merge of multiple sample VCFs within a given region."
   (fn [& args]
     (keyword (first args))))
 
+(defn- run-bcftools
+  "Run a bcftools merge on a (potential) subset of files in a temporary directory."
+  [i vcf-files region out-dir base-file]
+  (let [out-file (fsp/add-file-part base-file (format "%s-%s" (eprep/region->safestr region) i) out-dir)
+        vcf-file-str (string/join " " vcf-files)]
+    (if (= 1 (count vcf-files))
+      (io/copy (io/file (first vcf-files)) (io/file out-file))
+      (itx/run-cmd out-file
+                   "bcftools merge -o ~{(vcfutils/bcftools-out-type out-file)} "
+                   "-r ~{(eprep/region->samstr region)} ~{vcf-file-str} "
+                   "> ~{out-file}"))
+    (eprep/bgzip-index-vcf out-file)))
+
 (defmethod region-merge :bcftools
   ^{:doc "Merge VCFs within a region using bcftools."}
   [_ vcf-files region work-dir final-file]
-  (let [out-file (region-merge-outfile region work-dir final-file)]
+  (let [group-size 200
+        out-file (region-merge-outfile region work-dir final-file)]
     (when (itx/needs-run? out-file)
       (itx/with-temp-dir [tmp-dir (fs/parent out-file)]
-        (let [vcf-file-str (->> vcf-files
-                                (map #(prep-vcf-region % region tmp-dir))
-                                (string/join " "))]
-          (itx/run-cmd out-file
-                       "bcftools merge -o ~{(vcfutils/bcftools-out-type out-file)} "
-                       "-r ~{(eprep/region->samstr region)} ~{vcf-file-str} "
-                       "> ~{out-file}"))))
+        (let [final-vcf (loop [work-files vcf-files
+                               i 0]
+                          (if (= 1 (count work-files))
+                            (first work-files)
+                            (let [merged (map-indexed (fn [j xs] (run-bcftools (+ i j) xs region tmp-dir out-file))
+                                                      (partition-all group-size work-files))]
+                              (recur merged (+ i (count merged))))))]
+          (doseq [ext ["" ".tbi"]]
+            (.renameTo (io/file (str final-vcf ext)) (io/file (str out-file ext)))))))
     out-file))
 
 (defmethod region-merge :vcflib
