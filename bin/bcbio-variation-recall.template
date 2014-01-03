@@ -13,31 +13,30 @@ then
 java="$JAVA_HOME/bin/java"
 fi
 
-default_jvm_mem_opts=( -Xms512m -Xmx1g )
+# extract <emory and system property Java arguments from the list of provided arguments
+# http://java.dzone.com/articles/better-java-shell-script
+default_jvm_mem_opts="-Xms512m -Xmx1g"
+jvm_mem_opts=""
+jvm_propr_opts=""
+pass_args=""
+for arg in "$@"; do
+    case $arg in
+        '-D'*)
+            jvm_prop_opts="$jvm_prop_opts $arg"
+            ;;
+         '-Xm'*)
+            jvm_mem_opts="$jvm_mem_opts $arg"
+            ;;
+         *)
+            pass_args="$pass_args $arg"
+            ;;
+    esac
+done
 
-# Separate out java specific options on the command line
-# Doesn't work as intended. Bummer.
-# jvm_mem_opts=()
-# jvm_other_opts=()
-# pass_args=()
-# for x in "$@"
-# do
-#     if [[ $x = -Xm* ]]
-#     then
-#         jvm_mem_opts+=($x)
-#     elif [[ $x = -D* ]]
-#     then
-#         jvm_other_opts+=($x)
-#     else
-#         pass_args+=($x)
-#     fi
-# done
-# if [ ${#jvm_mem_opts[@]} -eq 0 ]; then
-#     jvm_mem_opts=${default_jvm_mem_opts[@]}
-# fi
-#
-# exec "$java" "${jvm_mem_opts[@]}" "${jvm_other_opts[@]-}" -jar "$jar" "${pass_args[@]-}"
+if [ "$jvm_mem_opts" == "" ]; then
+    jvm_mem_opts="$default_jvm_mem_opts"
+fi
 
-exec "$java" "${default_jvm_mem_opts[@]}" -jar "$jar" "$@"
+exec "$java" $jvm_mem_opts $jvm_prop_opts -jar "$jar" $pass_args
 
 exit
