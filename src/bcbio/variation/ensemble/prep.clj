@@ -26,7 +26,7 @@
   [vcf-file & {:keys [remove-orig?]}]
   (let [out-file (if (.endsWith vcf-file ".gz") vcf-file (str vcf-file ".gz"))]
     (itx/run-cmd out-file "bgzip -c ~{vcf-file} > ~{out-file}")
-    (when remove-orig?
+    (when (and (not (.endsWith vcf-file ".gz")) remove-orig?)
       (fsp/remove-path vcf-file))
     (tabix-index-vcf out-file)
     out-file))

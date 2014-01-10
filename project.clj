@@ -4,7 +4,8 @@
   :license {:name "MIT" :url "http://www.opensource.org/licenses/mit-license.html"}
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/tools.cli "0.3.0"]
-                 [bcbio.run "0.0.1-SNAPSHOT"]]
+                 [bcbio.run "0.0.1-SNAPSHOT"]
+                 [org.clojars.chapmanb/sam "1.96"]]
   :plugins [[lein-midje "3.1.3"]]
   :profiles {:dev {:dependencies
                    [[midje "1.6.0"]]}
