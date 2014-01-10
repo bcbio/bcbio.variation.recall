@@ -45,6 +45,13 @@
                    "> ~{out-file}"))
     (eprep/bgzip-index-vcf out-file)))
 
+(defn move-vcf
+  "Move a VCF file, also handling move of tabix index if it exists."
+  [orig-file new-file]
+  (doseq [ext ["" ".tbi"]]
+    (when (fs/exists? (str orig-file ext))
+      (.renameTo (io/file (str orig-file ext)) (io/file (str new-file ext))))))
+
 (defmethod region-merge :bcftools
   ^{:doc "Merge VCFs within a region using bcftools."}
   [_ vcf-files region work-dir final-file]
@@ -59,8 +66,7 @@
                             (let [merged (map-indexed (fn [j xs] (run-bcftools (+ i j) xs region tmp-dir out-file))
                                                       (partition-all group-size work-files))]
                               (recur merged (+ i (count merged))))))]
-          (doseq [ext ["" ".tbi"]]
-            (.renameTo (io/file (str final-vcf ext)) (io/file (str out-file ext)))))))
+          (move-vcf final-vcf out-file))))
     out-file))
 
 (defmethod region-merge :vcflib

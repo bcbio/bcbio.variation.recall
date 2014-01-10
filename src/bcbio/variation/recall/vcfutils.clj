@@ -26,6 +26,12 @@
     (when (= 1 (count samples))
       (first samples))))
 
+(defn has-variants?
+  "Does a VCF file have any variants."
+  [vcf-file]
+  (with-open [rdr (pog-reader vcf-file)]
+    (not (nil? (first (drop-while #(.startsWith % "#") (line-seq rdr)))))))
+
 (defn duplicate-samples
   "Retrieve any duplicate samples in the input VCF files."
   [vcf-files]

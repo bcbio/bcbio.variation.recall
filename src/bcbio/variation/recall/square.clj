@@ -11,6 +11,7 @@
             [bcbio.variation.recall.merge :as merge]
             [bcbio.variation.recall.vcfutils :as vcfutils]
             [clojure.java.io :as io]
+            [clojure.string :as string]
             [me.raynes.fs :as fs]))
 
 (defn subset-sample-region
@@ -22,6 +23,41 @@
                "~{(eprep/bgzip-index-vcf vcf-file)} > ~{out-file}")
   (eprep/bgzip-index-vcf out-file :remove-orig? true))
 
+(defn- intersect-variants
+  "Retrieve VCF variants present in both in-file and cmp-file."
+  [in-file cmp-file ref-file out-file]
+  (itx/run-cmd out-file
+               "vcfintersect -r ~{ref-file} -i ~{cmp-file} ~{in-file} | "
+               "bgzip > ~{out-file}")
+  (eprep/bgzip-index-vcf out-file :remove-orig? true))
+
+(defn- unique-variants
+  "Retrieve variants from in-file not present in cmp-file."
+  [in-file cmp-file ref-file out-file]
+  (itx/run-cmd out-file
+               "vcfintersect -v -r ~{ref-file} -i ~{cmp-file} ~{in-file} | "
+               "bgzip > ~{out-file}")
+  (eprep/bgzip-index-vcf out-file :remove-orig? true))
+
+(defn recall-variants
+  "Recall variants only at positions in the provided input VCF file."
+  [sample region vcf-file bam-file ref-file out-file]
+  (let [raw-out-file (string/replace out-file ".gz" "")
+        sample-file (str (fsp/file-root out-file) "-samples.txt")]
+    (spit sample-file sample)
+    (itx/run-cmd out-file
+                 "freebayes -b ~{bam-file} -@ ~{vcf-file} -l -f ~{ref-file} "
+                 "-r ~{(eprep/region->freebayes region)} -s ~{sample-file}  | "
+                 "bgzip > ~{out-file}")
+    (eprep/bgzip-index-vcf out-file :remove-orig? true)))
+
+(defn union-variants
+  "Create a union of VCF variants from two files."
+  [f1 f2 region ref-file out-file]
+  (itx/run-cmd out-file
+               "vcfcombine ~{f1} ~{f2} | vcfcreatemulti | bgzip > ~{out-file}")
+  (eprep/bgzip-index-vcf out-file :remove-orig? true))
+
 (defn- sample-by-region
   "Square off a specific sample in a genomic region, given all possible variants.
     - Subset to the current variant region.
@@ -29,7 +65,19 @@
     - Recall at missing positions with FreeBayes.
     - Merge original and recalled variants."
   [sample vcf-file bam-file union-vcf region ref-file out-file]
-  (println out-file))
+  (let [work-dir (fsp/safe-mkdir (str (fsp/file-root out-file) "-work"))
+        fnames (into {} (map (fn [x] [(keyword x) (str (io/file work-dir (format "%s.vcf.gz" x)))])
+                                 ["region" "existing" "needcall" "recall"]))]
+    (when (itx/needs-run? out-file)
+      (subset-sample-region vcf-file sample region (:region fnames))
+      (intersect-variants (:region fnames) union-vcf ref-file (:existing fnames))
+      (unique-variants union-vcf (:region fnames) ref-file (:needcall fnames))
+      (if (vcfutils/has-variants? (:needcall fnames))
+        (do
+          (recall-variants sample region (:needcall fnames) bam-file ref-file (:recall fnames))
+          (union-variants (:existing fnames) (:recall fnames) region ref-file out-file))
+        (merge/move-vcf (:region fnames) out-file)))
+    out-file))
 
 (defn- sample-by-region-prep
   "Prepare for squaring off a sample in a region, setup out file and check conditions.
@@ -56,9 +104,7 @@
                                    (for [s (vcfutils/get-samples vf)]
                                      [s vf]))
                                  vcf-files))]
-    (vec recall-vcfs)
-    ;(merge/region-merge :bcftools recall-vcfs region (:merge dirs) out-file)
-    union-vcf))
+    (merge/region-merge :bcftools recall-vcfs region (:merge dirs) out-file)))
 
 (defn- sample-to-bam-map
   "Prepare a map of sample names to BAM files."

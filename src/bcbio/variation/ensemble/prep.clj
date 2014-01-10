@@ -39,6 +39,10 @@
   [region]
   (format "%s_%s_%s" (:chrom region) (:start region) (:end region)))
 
+(defn region->freebayes
+  [region]
+  (format "%s:%s..%s" (:chrom region) (:start region) (:end region)))
+
 (defn norm-bgzip
   "Normalize and bgzip/tabix index a VCF input file in a defined region."
   [vcf-file region out-dir]
