@@ -93,21 +93,28 @@
     (itx/run-cmd out-file
                  "vcfcat ~{str-vcf-files} > ~{out-file}")))
 
-(defn combine-vcfs
-  "Merge multiple VCF files together in parallel over genomic regions."
-  [orig-vcf-files ref-file out-file config]
+(defn prep-by-region
+  "General functionality to split a set of VCFs into regions and apply a function, in parallel, to each."
+  [f orig-vcf-files ref-file out-file config]
   (let [vcf-files (rmap eprep/bgzip-index-vcf orig-vcf-files (:cores config))
         _ (vcfutils/ensure-no-dup-samples vcf-files)
         merge-dir (fsp/safe-mkdir (io/file (fs/parent out-file) "merge"))
         region-bed (rsplit/group-pregions vcf-files ref-file merge-dir config)
         merge-parts (->> (rmap (fn [region]
-                                 [(:i region) (region-merge :bcftools vcf-files region merge-dir out-file)])
+                                 [(:i region) (f vcf-files region merge-dir)])
                                (bed/reader region-bed)
                                (:cores config))
                          (map vec)
                          (sort-by first)
                          (map second))]
     (concatenate-vcfs merge-parts out-file config)))
+
+(defn combine-vcfs
+  "Merge multiple VCF files together in parallel over genomic regions."
+  [orig-vcf-files ref-file out-file config]
+  (prep-by-region (fn [vcf-files region out-dir]
+                    (region-merge :bcftools vcf-files region out-dir out-file))
+                  orig-vcf-files ref-file out-file config))
 
 (defn- is-vcf?
   [f]

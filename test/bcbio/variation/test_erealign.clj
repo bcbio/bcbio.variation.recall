@@ -3,6 +3,7 @@
   (:require [bcbio.variation.ensemble.realign :as erealign]
             [bcbio.variation.recall.merge :as merge]
             [bcbio.variation.recall.split :as rsplit]
+            [bcbio.variation.recall.square :as square]
             [midje.sweet :refer :all]
             [clojure.java.io :as io]
             [bcbio.run.fsp :as fsp]
@@ -38,3 +39,8 @@
 (facts "Merge multiple input files, running in parallel over small regions"
   (let [out-file (str (io/file data-dir "work" "NA12878-10-merge.vcf.gz"))]
     (merge/combine-vcfs [(first vcf-files) merge-vcf-file] ref-file out-file config) => out-file))
+
+(facts "Square off variant calls from multiple samples, creating merged final file."
+  (let [out-file (str (io/file data-dir "work" "NA12878-10-square.vcf.gz"))]
+    (square/combine-vcfs [(first vcf-files) merge-vcf-file] [bam-file bam-file]
+                         ref-file out-file config) => out-file))

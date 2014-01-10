@@ -52,12 +52,14 @@
     out-file))
 
 (defn create-union
-  "Create a union file with inputs from multiple variant callers."
+  "Create a minimal union file with inputs from multiple variant callers in the given region."
   [vcf-files ref-file region out-dir]
   (let [out-file (str (io/file out-dir (str "union-" (region->safestr region) ".vcf")))
-        intersect-str (string/join " | " (map (fn [x] (<< "vcfintersect -r ~{ref-file} -u ~{x}"))
-                                              (rest vcf-files)))]
+        vcf-files-str (string/join " " vcf-files)
+        vcf-header "echo -e '##fileformat=VCFv4.1\\n#CHROM\\tPOS\\tID\\tREF\\tALT\\tQUAL\\tFILTER\\tINFO'"
+        isec-to-vcf "awk -F'\t' '{ print $1 FS $2 FS \".\" FS $3 FS $4 FS \".\" FS \".\" FS \".\"}'"]
     (itx/run-cmd out-file
-             "zcat ~{(first vcf-files)} | ~{intersect-str} | "
-             "vcfcreatemulti > ~{out-file}")
-    (bgzip-index-vcf out-file)))
+                 "cat <(~{vcf-header}) "
+                 "<(bcftools isec -n +1 -r ~{(region->samstr region)} ~{vcf-files-str} | ~{isec-to-vcf)) | "
+                 "vcfcreatemulti > ~{out-file}")
+    (bgzip-index-vcf out-file :remove-orig? true)))
