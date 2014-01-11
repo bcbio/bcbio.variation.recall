@@ -26,7 +26,7 @@ requires [leiningen].
 
     Merge multiple VCF files together, running in parallel over genomic regions.
 
-    Usage: bcbio.variation.recall merge [options] out-file ref-file vcf-files
+    Usage: bcbio-variation-recall merge [options] out-file ref-file vcf-files
 
       out-file:  VCF (or bgzipped VCF) file to write merged output to
       ref-file:  FASTA format genome reference file
@@ -35,6 +35,23 @@ requires [leiningen].
 
     Options:
       -c, --cores  Number of cores to use
+      -h, --help
+
+### Squaring off
+
+    Perform squaring off for a set of called VCF files, recalling at no-call positions in each sample.
+
+    Usage: bcbio-variation-recall square [options] out-file ref-file [<vcf-files, bam-files, or list-files>]
+
+      out-file:    VCF (or bgzipped VCF) file to write merged output to
+      ref-file:    FASTA format genome reference file
+      <remaining>: VCF files to recall and BAM files for each sample. Can be specified
+                   on the command line or as text files containing paths to files
+                   for processing. VCFs can be single or multi-sample and BAMs can be in
+                   any order but each VCF sample must have an associated BAM file to recall.
+
+    Options:
+      -c, --cores CORES  1  Number of cores to use
       -h, --help
 
 ## Thank you

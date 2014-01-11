@@ -1,0 +1,4 @@
+./test/data/ensemble/NA12878-10-freebayes.vcf
+./test/data/ensemble/NA12878-10-gatk.vcf
+./test/data/ensemble/NA12878-10-gatk-haplotype.vcf
+./test/data/ensemble/NA12878-10.bam

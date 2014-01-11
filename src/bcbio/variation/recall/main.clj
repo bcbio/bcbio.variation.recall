@@ -1,5 +1,6 @@
 (ns bcbio.variation.recall.main
   (:require [bcbio.variation.recall.merge]
+            [bcbio.variation.recall.square]
             [clojure.java.io :as io])
   (:gen-class))
 
@@ -16,6 +17,8 @@
 (def ^{:private true} progs
   {:merge {:main bcbio.variation.recall.merge/-main
            :doc "Merge multiple VCF files together, running in parallel over genomic regions."}
+   :square {:main bcbio.variation.recall.square/-main
+            :doc "Perform squaring off for a set of called VCF files, recalling at no-call positions in each sample."}
    :version {:main version
              :doc "Print version"}})
 
