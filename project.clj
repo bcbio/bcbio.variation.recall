@@ -5,7 +5,10 @@
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/tools.cli "0.3.0"]
                  [bcbio.run "0.0.1-SNAPSHOT"]
-                 [org.clojars.chapmanb/sam "1.96"]]
+                 [org.clojars.chapmanb/picard "1.104"]
+                 [org.clojars.chapmanb/sam "1.104"]
+                 [org.clojars.chapmanb/tribble "1.104"]
+                 [org.clojars.chapmanb/variant "1.104"]]
   :plugins [[lein-midje "3.1.3"]]
   :profiles {:dev {:dependencies
                    [[midje "1.6.0"]]}

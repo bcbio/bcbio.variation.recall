@@ -20,7 +20,7 @@
                                "NA12878-10-gatk-haplotype.vcf"])
                merge-vcf-file (str (io/file r-data-dir "NA12878-1-10-gatk-haplotype.vcf"))
                work-dir (str (io/file data-dir "work"))
-               config {:cores 1}]
+               config {:cores 1 :caller :platypus}]
            (doseq [x (concat [work-dir]
                              (map #(str % ".gz") (concat [merge-vcf-file] vcf-files))
                              (map #(str % ".gz.tbi") (concat [merge-vcf-file] vcf-files)))]
@@ -30,7 +30,7 @@
 (facts "Calculate ensemble set of variants from multiple inputs using realignment."
   (let [region {:chrom "10" :start 250000 :end 399000}
         out-file (str (io/file data-dir "work" "10_250000_399000" "recall-10_250000_399000.vcf"))]
-    (erealign/by-region region vcf-files bam-file ref-file work-dir) => out-file))
+    (erealign/by-region region vcf-files bam-file ref-file work-dir) =future=> out-file))
 
 (facts "Identify split breakpoints for parallel execution"
   (let [out-file (str (io/file data-dir "work" "split" "NA12878-10-freebayes-combo-3-pregions.bed"))]

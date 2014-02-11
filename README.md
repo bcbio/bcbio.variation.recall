@@ -66,6 +66,7 @@ your path:
 - [bedtools][bedtools]
 - [bcftools (0.20+, with htslib)][bcftools]
 - [samtools][samtools]
+- [platypus]
 
 The [bcbio-nextgen][bcbio-nextgen] pipeline installs all this software automatically.
 
@@ -76,6 +77,7 @@ The [bcbio-nextgen][bcbio-nextgen] pipeline installs all this software automatic
 [freebayes]: https://github.com/ekg/freebayes
 [glia]: https://github.com/ekg/glia
 [samtools]: http://samtools.sourceforge.net/
+[platypus]: http://www.well.ox.ac.uk/platypus
 
 ## License
 

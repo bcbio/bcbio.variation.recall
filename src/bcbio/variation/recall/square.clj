@@ -10,6 +10,7 @@
             [bcbio.variation.ensemble.prep :as eprep]
             [bcbio.variation.recall.clhelp :as clhelp]
             [bcbio.variation.recall.merge :as merge]
+            [bcbio.variation.recall.vcfheader :as vcfheader]
             [bcbio.variation.recall.vcfutils :as vcfutils]
             [clojure.java.io :as io]
             [clojure.string :as string]
@@ -41,11 +42,15 @@
                "bgzip > ~{out-file}")
   (eprep/bgzip-index-vcf out-file :remove-orig? true))
 
-(defn recall-variants
-  "Recall variants only at positions in the provided input VCF file."
-  [sample region vcf-file bam-file ref-file out-file]
-  (let [raw-out-file (string/replace out-file ".gz" "")
-        sample-file (str (fsp/file-root out-file) "-samples.txt")]
+(defmulti recall-variants
+  "Recall variants only at positions in provided input VCF file, using multiple callers."
+  (fn [& args]
+    (keyword (get (last args) :caller :freebayes))))
+
+(defmethod recall-variants :freebayes
+  ^{:doc "Perform variant recalling at specified positions with FreeBayes."}
+  [sample region vcf-file bam-file ref-file out-file config]
+  (let [sample-file (str (fsp/file-root out-file) "-samples.txt")]
     (spit sample-file sample)
     (itx/run-cmd out-file
                  "freebayes -b ~{bam-file} -@ ~{vcf-file} -l -f ~{ref-file} "
@@ -53,11 +58,25 @@
                  "bgzip > ~{out-file}")
     (eprep/bgzip-index-vcf out-file :remove-orig? true)))
 
+(defmethod recall-variants :platypus
+  ^{:doc "Perform variant recalling at specified positions with Platypus."}
+  [sample region vcf-file bam-file ref-file out-file config]
+  (let [raw-out-file (string/replace out-file ".gz" "")]
+    (when (itx/needs-run? out-file)
+      (itx/run-cmd raw-out-file
+                   "platypus callVariants --bamFiles=~{bam-file} --regions=~{(eprep/region->samstr region)} "
+                   "--refFile=~{ref-file} --source=~{vcf-file} --minPosterior=0 --getVariantsFromBAMs=0 "
+                   "--logFileName /dev/null --output ~{raw-out-file}"))
+    (eprep/bgzip-index-vcf raw-out-file :remove-orig? true)))
+
 (defn union-variants
   "Create a union of VCF variants from two files."
   [f1 f2 region ref-file out-file]
-  (itx/run-cmd out-file
-               "vcfcombine ~{f1} ~{f2} | vcfcreatemulti | bgzip > ~{out-file}")
+  (when (itx/needs-run? out-file)
+    (vcfheader/with-merged [header-file [f1 f2] ref-file out-file]
+      (itx/run-cmd out-file
+                   "cat <(grep ^## ~{header-file}) <(vcfcombine ~{f1} ~{f2} | grep -v ^##) | "
+                   "bgzip -c > ~{out-file}")))
   (eprep/bgzip-index-vcf out-file :remove-orig? true))
 
 (defn- sample-by-region
@@ -66,7 +85,7 @@
     - Identify missing uncalled variants: create files of existing and missing variants.
     - Recall at missing positions with FreeBayes.
     - Merge original and recalled variants."
-  [sample vcf-file bam-file union-vcf region ref-file out-file]
+  [sample vcf-file bam-file union-vcf region ref-file out-file config]
   (let [work-dir (fsp/safe-mkdir (str (fsp/file-root out-file) "-work"))
         fnames (into {} (map (fn [x] [(keyword x) (str (io/file work-dir (format "%s.vcf.gz" x)))])
                                  ["region" "existing" "needcall" "recall"]))]
@@ -76,20 +95,20 @@
       (unique-variants union-vcf (:region fnames) ref-file (:needcall fnames))
       (if (vcfutils/has-variants? (:needcall fnames))
         (do
-          (recall-variants sample region (:needcall fnames) bam-file ref-file (:recall fnames))
-          (union-variants (:existing fnames) (:recall fnames) region ref-file out-file))
+          (recall-variants sample region (:needcall fnames) bam-file ref-file (:recall fnames) config)
+          (union-variants (:recall fnames) (:existing fnames) region ref-file out-file))
         (merge/move-vcf (:region fnames) out-file)))
     out-file))
 
 (defn- sample-by-region-prep
   "Prepare for squaring off a sample in a region, setup out file and check conditions.
    We only can perform squaring off with a BAM file for the sample."
-  [sample vcf-file bam-file union-vcf region ref-file out-dir]
+  [sample vcf-file bam-file union-vcf region ref-file out-dir config]
   (let [out-file (str (io/file (fsp/safe-mkdir (io/file out-dir (get region :chrom "nochrom")))
                                (format "%s-%s.vcf.gz" sample (eprep/region->safestr region))))]
     (cond
      (nil? bam-file) (subset-sample-region vcf-file sample region out-file)
-     (itx/needs-run? out-file) (sample-by-region sample vcf-file bam-file union-vcf region ref-file out-file)
+     (itx/needs-run? out-file) (sample-by-region sample vcf-file bam-file union-vcf region ref-file out-file config)
      :else out-file)))
 
 (defn by-region
@@ -97,11 +116,11 @@
     - Identifies all called variants from all samples
     - For each sample, square off using `sample-by-region`
     - Merge all variant files in the region together."
-  [vcf-files bam-files region ref-file dirs out-file]
+  [vcf-files bam-files region ref-file dirs out-file config]
   (let [union-vcf (eprep/create-union vcf-files ref-file region (:union dirs))
         recall-vcfs (map (fn [[sample vcf-file]]
                            (sample-by-region-prep sample vcf-file (get bam-files sample)
-                                                  union-vcf region ref-file (:square dirs)))
+                                                  union-vcf region ref-file (:square dirs) config))
                          (mapcat (fn [vf]
                                    (for [s (vcfutils/get-samples vf)]
                                      [s vf]))
@@ -123,7 +142,7 @@
               :square (fsp/safe-mkdir (io/file (fs/parent out-file) "square"))}]
     (merge/prep-by-region (fn [vcf-files region merge-dir]
                             (by-region vcf-files (sample-to-bam-map bam-files)
-                                       region ref-file (assoc dirs :merge merge-dir) out-file))
+                                       region ref-file (assoc dirs :merge merge-dir) out-file config))
                           orig-vcf-files ref-file out-file config)))
 
 (defn- usage [options-summary]
@@ -143,9 +162,17 @@
        (string/join \newline)))
 
 (defn -main [& args]
-  (let [{:keys [options arguments errors summary]}
+  (let [caller-opts #{:freebayes :platypus}
+        {:keys [options arguments errors summary]}
         (parse-opts args [["-c" "--cores CORES" "Number of cores to use" :default 1
                            :parse-fn #(Integer/parseInt %)]
+                          ["-m" "--caller CALLER" (str "Calling method to use: "
+                                                       (string/join ", " (map name caller-opts)))
+                           :default "freebayes"
+                           :parse-fn #(keyword %)
+                           :validate [#(contains? caller-opts %)
+                                      (str "Supported calling options: "
+                                           (string/join ", " (map name caller-opts)))]]
                           ["-h" "--help"]])]
     (cond
      (:help options) (clhelp/exit 0 (usage summary))
