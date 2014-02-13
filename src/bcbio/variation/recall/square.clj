@@ -127,7 +127,7 @@
                                  vcf-files))]
     (merge/region-merge :bcftools recall-vcfs region (:merge dirs) out-file)))
 
-(defn- sample-to-bam-map
+(defn sample-to-bam-map
   "Prepare a map of sample names to BAM files."
   [bam-files]
   (into {} (mapcat (fn [b]
@@ -141,6 +141,7 @@
   (let [dirs {:union (fsp/safe-mkdir (io/file (fs/parent out-file) "union"))
               :square (fsp/safe-mkdir (io/file (fs/parent out-file) "square"))}]
     (merge/prep-by-region (fn [vcf-files region merge-dir]
+                            (vcfutils/ensure-no-dup-samples vcf-files)
                             (by-region vcf-files (sample-to-bam-map bam-files)
                                        region ref-file (assoc dirs :merge merge-dir) out-file config))
                           orig-vcf-files ref-file out-file config)))
@@ -168,7 +169,7 @@
                            :parse-fn #(Integer/parseInt %)]
                           ["-m" "--caller CALLER" (str "Calling method to use: "
                                                        (string/join ", " (map name caller-opts)))
-                           :default "freebayes"
+                           :default "platypus"
                            :parse-fn #(keyword %)
                            :validate [#(contains? caller-opts %)
                                       (str "Supported calling options: "

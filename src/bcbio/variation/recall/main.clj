@@ -1,6 +1,7 @@
 (ns bcbio.variation.recall.main
   (:require [bcbio.variation.recall.merge]
             [bcbio.variation.recall.square]
+            [bcbio.variation.ensemble.realign]
             [clojure.java.io :as io])
   (:gen-class))
 
@@ -18,7 +19,10 @@
   {:merge {:main bcbio.variation.recall.merge/-main
            :doc "Merge multiple VCF files together, running in parallel over genomic regions."}
    :square {:main bcbio.variation.recall.square/-main
-            :doc "Perform squaring off for a set of called VCF files, recalling at no-call positions in each sample."}
+            :doc (str "Perform squaring off for a set of called VCF files, recalling at no-call "
+                      "positions in each sample.")}
+   :ensemble {:main bcbio.variation.ensemble.realign/-main
+              :doc "Perform ensemble calling given multiple VCF callers for a single sample."}
    :version {:main version
              :doc "Print version"}})
 

@@ -27,10 +27,16 @@
              (fsp/remove-path x))
            ?form)))
 
-(facts "Calculate ensemble set of variants from multiple inputs using realignment."
+(facts "Calculate ensemble set of variants from multiple inputs using realignment in a region."
   (let [region {:chrom "10" :start 250000 :end 399000}
-        out-file (str (io/file data-dir "work" "10_250000_399000" "recall-10_250000_399000.vcf"))]
-    (erealign/by-region region vcf-files bam-file ref-file work-dir) =future=> out-file))
+        out-file (str (io/file data-dir "work" "10" "recall-10_250000_399000.vcf.gz"))
+        dirs {:ensemble work-dir}
+        sample "NA12878-2"]
+    (erealign/by-region sample region vcf-files bam-file ref-file dirs config) => out-file))
+
+(facts "Calculate ensemble set of variants from multiple inputs using realignment over entire region."
+  (let [out-file (str (io/file work-dir "NA12878-2-ensemble.vcf.gz"))]
+    (erealign/ensemble-vcfs vcf-files [bam-file] ref-file out-file config) => out-file))
 
 (facts "Identify split breakpoints for parallel execution"
   (let [out-file (str (io/file data-dir "work" "split" "NA12878-10-freebayes-combo-3-pregions.bed"))]

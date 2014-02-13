@@ -52,6 +52,25 @@ requires [leiningen].
 
     Options:
       -c, --cores CORES  1  Number of cores to use
+      -m, --caller CALLER  platypus  Calling method to use: freebayes, platypus
+      -h, --help
+
+### Ensemble
+
+    Ensemble calling for samples: combine multiple VCF caller outputs into a single callset.
+
+    Usage: bcbio-variation-recall ensemble [options] out-file ref-file [<vcf-files, bam-files, or list-files>]
+
+       out-file:   VCF (or bgzipped VCF) file to write merged output to
+       ref-file:   FASTA format genome reference file
+      <remaining>: VCF files to recall and BAM files for each sample. Can be specified
+                   on the command line or as text files containing paths to files
+                   for processing. VCFs can be single or multi-sample and BAMs can be in
+                   any order but each VCF sample must have an associated BAM file.
+
+    Options:
+      -c, --cores CORES    1         Number of cores to use
+      -m, --caller CALLER  platypus  Calling method to use: freebayes, platypus
       -h, --help
 
 ## Thank you
