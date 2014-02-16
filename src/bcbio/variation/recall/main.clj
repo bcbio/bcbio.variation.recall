@@ -28,7 +28,14 @@
 
 (defn -main [& args]
   (if-let [to-run (get progs (keyword (first args)))]
-    (apply (:main to-run) (rest args))
+    (try
+      (apply (:main to-run) (rest args))
+      (catch Throwable t
+        (shutdown-agents)
+        (System/exit 1))
+      (finally
+        (shutdown-agents)
+        (System/exit 0)))
     (do
       (println "Parallel merging, squaring off and ensemble calling for genomic variants\n")
       (println "Commands:")

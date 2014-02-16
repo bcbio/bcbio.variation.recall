@@ -18,7 +18,8 @@
   "Build output file for regional merge inside of chromosome subdirectory."
   [region work-dir final-file]
   (fsp/add-file-part final-file (eprep/region->safestr region)
-                     (fsp/safe-mkdir (io/file work-dir (get region :chrom "nochrom")))))
+                     (fsp/safe-mkdir (io/file work-dir (get region :chrom "nochrom")))
+                     ".vcf.gz"))
 
 (defn- prep-vcf-region
   "Prepare a VCF file for merging, retrieving only the local region of interest."

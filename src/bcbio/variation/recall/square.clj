@@ -66,7 +66,7 @@
       (itx/run-cmd raw-out-file
                    "platypus callVariants --bamFiles=~{bam-file} --regions=~{(eprep/region->samstr region)} "
                    "--refFile=~{ref-file} --source=~{vcf-file} --minPosterior=0 --getVariantsFromBAMs=0 "
-                   "--logFileName /dev/null --output ~{raw-out-file}"))
+                   "--logFileName /dev/null --verbosity=1 --output ~{raw-out-file}"))
     (eprep/bgzip-index-vcf raw-out-file :remove-orig? true)))
 
 (defn union-variants
