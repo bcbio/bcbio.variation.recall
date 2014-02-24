@@ -15,7 +15,6 @@
 (defn from-file
   "Retrieve header from input VCF file."
   [vcf-file]
-  (println vcf-file)
   (with-open [vcf-reader (AbstractFeatureReader/getFeatureReader vcf-file (VCFCodec.) false)]
     (.getHeader vcf-reader)))
 

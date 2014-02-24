@@ -57,7 +57,7 @@
   [vcf-file sample out-file]
   (let [out-type (bcftools-out-type out-file)]
     (itx/run-cmd out-file
-                 "bcftools subset -s ~{sample} -o ~{out-type} ~{vcf-file} > ~{out-file}"))
+                 "bcftools view -s ~{sample} -O ~{out-type} ~{vcf-file} > ~{out-file}"))
   out-file)
 
 (defn subset-to-sample

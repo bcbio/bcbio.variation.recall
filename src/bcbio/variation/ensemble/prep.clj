@@ -49,7 +49,7 @@
   (let [prep-vcf-file (bgzip-index-vcf vcf-file)
         out-file (str (io/file out-dir (str (fs/base-name vcf-file) ".gz")))]
     (itx/run-cmd out-file
-             "bcftools subset -r ~{(region->samstr region)} ~{prep-vcf-file} | "
+             "bcftools view -r ~{(region->samstr region)} ~{prep-vcf-file} | "
              "vcfallelicprimitives | "
              "bgzip -c /dev/stdin > ~{out-file}")
     (tabix-index-vcf out-file)

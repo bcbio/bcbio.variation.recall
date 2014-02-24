@@ -21,7 +21,7 @@
   "Subset the input file to the given region and sample."
   [vcf-file sample region out-file]
   (itx/run-cmd out-file
-               "bcftools subset -o ~{(vcfutils/bcftools-out-type out-file)} "
+               "bcftools view -O ~{(vcfutils/bcftools-out-type out-file)} "
                "-r ~{(eprep/region->samstr region)} -s ~{sample} "
                "~{(eprep/bgzip-index-vcf vcf-file)} > ~{out-file}")
   (eprep/bgzip-index-vcf out-file :remove-orig? true))

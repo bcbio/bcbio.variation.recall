@@ -42,7 +42,7 @@
     (if (= 1 (count vcf-files))
       (io/copy (io/file (first vcf-files)) (io/file out-file))
       (itx/run-cmd out-file
-                   "bcftools merge -o ~{(vcfutils/bcftools-out-type out-file)} "
+                   "bcftools merge -O ~{(vcfutils/bcftools-out-type out-file)} "
                    "-r ~{(eprep/region->samstr region)} ~{vcf-file-str} "
                    "> ~{out-file}"))
     (eprep/bgzip-index-vcf out-file)))
