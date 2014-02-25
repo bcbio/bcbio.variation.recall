@@ -9,7 +9,7 @@
             [clojure.java.io :as io]
             [clojure.string :as string]))
 
-(def ^{:private true} merge-size 10000)
+(def ^{:private true} merge-size 25000)
 
 (defn- fai->bed
   [fai-file]
