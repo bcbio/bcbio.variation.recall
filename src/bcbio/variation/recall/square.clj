@@ -58,6 +58,17 @@
                  "bgzip > ~{out-file}")
     (eprep/bgzip-index-vcf out-file :remove-orig? true)))
 
+(defn platypus-filter
+  "Perform post-filtration of platypus variant calls.
+   Removes hard Q20 filter and replaces with NA12878/GiaB tuned depth
+   and quality based filter. bgzips final output."
+  [orig-file]
+  (let [out-file (str orig-file ".gz")]
+    (itx/run-cmd out-file
+                 " bcftools filter ~{orig-file} -s LOWDPQUAL -m + "
+                 "-e '((FR<=0.5)&&((TC<4)||((TC<13)&&(%QUAL<10))))||((FR>0.5)&&((TC<4)&&(%QUAL<50)))' "
+                 "| sed 's/\\tQ20\\t/\\tPASS\\t/' | bgzip -c > ~{out-file}")))
+
 (defmethod recall-variants :platypus
   ^{:doc "Perform variant recalling at specified positions with Platypus."}
   [sample region vcf-file bam-file ref-file out-file config]
@@ -65,8 +76,10 @@
     (when (itx/needs-run? out-file)
       (itx/run-cmd raw-out-file
                    "platypus callVariants --bamFiles=~{bam-file} --regions=~{(eprep/region->samstr region)} "
+                   "--hapScoreThreshold 10 --scThreshold 0.99 "
                    "--refFile=~{ref-file} --source=~{vcf-file} --minPosterior=0 --getVariantsFromBAMs=0 "
-                   "--logFileName /dev/null --verbosity=1 --output ~{raw-out-file}"))
+                   "--logFileName /dev/null --verbosity=1 --output ~{raw-out-file}")
+      (platypus-filter raw-out-file))
     (eprep/bgzip-index-vcf raw-out-file :remove-orig? true)))
 
 (defn union-variants
