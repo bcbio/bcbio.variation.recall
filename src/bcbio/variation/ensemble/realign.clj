@@ -40,7 +40,7 @@
     (when (itx/needs-run? out-file)
       (itx/run-cmd raw-out-file
                    "platypus callVariants --bamFiles=~{bam-file} --regions=~{(eprep/region->samstr region)} "
-                   "--hapScoreThreshold 10 --scThreshold 0.99 "
+                   "--hapScoreThreshold 10 --scThreshold 0.99 --filteredReadsFrac 0.9 "
                    "--refFile=~{ref-file} --source=~{union-vcf} --assemble=1 "
                    "--logFileName /dev/null --verbosity=1 --output ~{raw-out-file}")
       (square/platypus-filter :vcflib raw-out-file))

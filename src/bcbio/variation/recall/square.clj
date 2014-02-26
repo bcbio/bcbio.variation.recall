@@ -70,7 +70,7 @@
   (let [out-file (str orig-file ".gz")]
     (itx/run-cmd out-file
                  " bcftools filter ~{orig-file} -s LOWDPQUAL -m '+' "
-                 "-e '(((FR<=0.5)&&(TC<4))||((TC<13)&&(%QUAL<10)))||((FR>0.5)&&((TC<4)&&(%QUAL<20)))' "
+                 "-e '(((FR<=0.5)&&(TC<4)&&(%QUAL<20))||((TC<13)&&(%QUAL<10)))||((FR>0.5)&&((TC<4)&&(%QUAL<20)))' "
                  "| sed 's/\\tQ20\\t/\\tPASS\\t/' | bgzip -c > ~{out-file}")))
 
 (defmethod platypus-filter :vcflib
@@ -78,7 +78,7 @@
   (let [out-file (str orig-file ".gz")]
     (itx/run-cmd out-file
                  "vcffilter ~{orig-file} -t LOWDPQUAL -A "
-                 "--or -f 'FR < 0.55 & TC < 4' -f 'FR < 0.55 & TC < 13 & QUAL < 10' "
+                 "--or -f 'FR < 0.55 & TC < 4 & QUAL < 20' -f 'FR < 0.55 & TC < 13 & QUAL < 10' "
                  "-f 'FR > 0.54 & TC < 4 & QUAL < 20'"
                  "| sed 's/\\tQ20\\t/\\tPASS\\t/' | sed 's/PASS,LOWDPQUAL/LOWDPQUAL/' "
                  "| bgzip -c > ~{out-file}")))
@@ -90,7 +90,7 @@
     (when (itx/needs-run? out-file)
       (itx/run-cmd raw-out-file
                    "platypus callVariants --bamFiles=~{bam-file} --regions=~{(eprep/region->samstr region)} "
-                   "--hapScoreThreshold 10 --scThreshold 0.99 "
+                   "--hapScoreThreshold 10 --scThreshold 0.99 --filteredReadsFrac 0.9 "
                    "--refFile=~{ref-file} --source=~{vcf-file} --minPosterior=0 --getVariantsFromBAMs=0 "
                    "--logFileName /dev/null --verbosity=1 --output ~{raw-out-file}")
       (platypus-filter :vcflib raw-out-file))

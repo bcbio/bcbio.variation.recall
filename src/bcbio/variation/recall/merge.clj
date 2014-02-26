@@ -97,9 +97,11 @@
 
 (defmethod concatenate-vcfs :default
   [vcf-files out-file config]
-  (let [str-vcf-files (string/join " " (rmap eprep/bgzip-index-vcf vcf-files (:cores config)))]
+  (let [input-list (str (fsp/file-root out-file) "-inputs.txt")]
+    (when (itx/needs-run? out-file)
+      (spit input-list (string/join "\n" (rmap eprep/bgzip-index-vcf vcf-files (:cores config)))))
     (itx/run-cmd out-file
-                 "vcfcat ~{str-vcf-files} > ~{out-file}")))
+                 "vcfcat `cat ~{input-list}` > ~{out-file}")))
 
 (defn prep-by-region
   "General functionality to split a set of VCFs into regions and apply a function, in parallel, to each."
