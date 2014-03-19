@@ -22,8 +22,10 @@
                work-dir (str (io/file data-dir "work"))
                config {:cores 1 :caller :platypus}]
            (doseq [x (concat [work-dir]
-                             (map #(str % ".gz") (concat [merge-vcf-file] vcf-files))
-                             (map #(str % ".gz.tbi") (concat [merge-vcf-file] vcf-files)))]
+                             (mapcat (fn [f]
+                                       (map #(str (fsp/file-root f) %) [".vcf.gz" ".vcf.gz.tbi"
+                                                                        "-passonly.vcf.gz" "-passonly.vcf.gz.tbi"]))
+                                     (concat [merge-vcf-file] vcf-files)))]
              (fsp/remove-path x))
            ?form)))
 

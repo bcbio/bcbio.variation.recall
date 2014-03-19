@@ -23,9 +23,13 @@
 
 (defn bgzip-index-vcf
   "Prepare a VCF file for positional query with bgzip and tabix indexing."
-  [vcf-file & {:keys [remove-orig?]}]
-  (let [out-file (if (.endsWith vcf-file ".gz") vcf-file (str vcf-file ".gz"))]
-    (itx/run-cmd out-file "bgzip -c ~{vcf-file} > ~{out-file}")
+  [vcf-file & {:keys [remove-orig? remove-nopass?]}]
+  (let [out-file (str (fsp/file-root vcf-file)
+                      (if remove-nopass? "-passonly" "")
+                      ".vcf.gz")]
+    (if remove-nopass?
+      (itx/run-cmd out-file "bcftools view -f 'PASS,.' ~{vcf-file} | bgzip -c > ~{out-file}")
+      (itx/run-cmd out-file "bgzip -c ~{vcf-file} > ~{out-file}"))
     (when (and (not (.endsWith vcf-file ".gz")) remove-orig?)
       (fsp/remove-path vcf-file))
     (tabix-index-vcf out-file)

@@ -106,7 +106,8 @@
 (defn prep-by-region
   "General functionality to split a set of VCFs into regions and apply a function, in parallel, to each."
   [f orig-vcf-files ref-file out-file config]
-  (let [vcf-files (rmap eprep/bgzip-index-vcf orig-vcf-files (:cores config))
+  (let [vcf-files (rmap #(eprep/bgzip-index-vcf % :remove-nopass? true) orig-vcf-files
+                        (:cores config))
         merge-dir (fsp/safe-mkdir (io/file (fs/parent out-file) "merge"))
         region-bed (rsplit/group-pregions vcf-files ref-file merge-dir config)
         merge-parts (->> (rmap (fn [region]
