@@ -38,13 +38,16 @@
   "Run a bcftools merge on a (potential) subset of files in a temporary directory."
   [i vcf-files region out-dir base-file]
   (let [out-file (fsp/add-file-part base-file (format "%s-%s" (eprep/region->safestr region) i) out-dir)
-        vcf-file-str (string/join " " vcf-files)]
+        input-list (str (fsp/file-root out-file) "inputs.txt")]
     (if (= 1 (count vcf-files))
       (io/copy (io/file (first vcf-files)) (io/file out-file))
-      (itx/run-cmd out-file
-                   "bcftools merge -O ~{(vcfutils/bcftools-out-type out-file)} "
-                   "-r ~{(eprep/region->samstr region)} ~{vcf-file-str} "
-                   "> ~{out-file}"))
+      (do
+        (when (itx/needs-run? out-file)
+          (spit input-list (string/join "\n" vcf-files)))
+        (itx/run-cmd out-file
+                     "bcftools merge -O ~{(vcfutils/bcftools-out-type out-file)} "
+                     "-r ~{(eprep/region->samstr region)} `cat ~{input-list}` "
+                     "> ~{out-file}")))
     (eprep/bgzip-index-vcf out-file)))
 
 (defn move-vcf
@@ -57,7 +60,7 @@
 (defmethod region-merge :bcftools
   ^{:doc "Merge VCFs within a region using bcftools."}
   [_ vcf-files region work-dir final-file]
-  (let [group-size 100
+  (let [group-size 5000
         out-file (region-merge-outfile region work-dir final-file)]
     (when (itx/needs-run? out-file)
       (itx/with-temp-dir [tmp-dir (fs/parent out-file)]
@@ -90,18 +93,22 @@
   (fn [_ out-file _]
     (if (.endsWith out-file ".gz") :bgzip :default)))
 
-(defmethod concatenate-vcfs :bgzip
+(defn- do-concat
   [vcf-files out-file config]
-  (eprep/bgzip-index-vcf (concatenate-vcfs vcf-files (subs out-file 0 (.lastIndexOf out-file ".gz")) config)
-                         :remove-orig? true))
-
-(defmethod concatenate-vcfs :default
-  [vcf-files out-file config]
-  (let [input-list (str (fsp/file-root out-file) "-inputs.txt")]
+  (let [input-list (str (fsp/file-root out-file) "-inputs.txt")
+        bgzip-cmd (if (.endsWith out-file ".gz") "| bgzip -c" "")]
     (when (itx/needs-run? out-file)
       (spit input-list (string/join "\n" (rmap eprep/bgzip-index-vcf vcf-files (:cores config)))))
     (itx/run-cmd out-file
-                 "vcfcat `cat ~{input-list}` > ~{out-file}")))
+                 "vcfcat `cat ~{input-list}` ~{bgzip-cmd} > ~{out-file}")))
+
+(defmethod concatenate-vcfs :bgzip
+  [vcf-files out-file config]
+  (eprep/bgzip-index-vcf (do-concat vcf-files out-file config)))
+
+(defmethod concatenate-vcfs :default
+  [vcf-files out-file config]
+  (do-concat vcf-files out-file config))
 
 (defn prep-by-region
   "General functionality to split a set of VCFs into regions and apply a function, in parallel, to each."
