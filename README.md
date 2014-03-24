@@ -82,6 +82,7 @@ your path:
 - [freebayes][freebayes]
 - [glia][glia]
 - [vcflib][vcflib]
+- [vt]
 - [bedtools][bedtools]
 - [bcftools (0.20+, with htslib)][bcftools]
 - [samtools][samtools]
@@ -97,6 +98,7 @@ The [bcbio-nextgen][bcbio-nextgen] pipeline installs all this software automatic
 [glia]: https://github.com/ekg/glia
 [samtools]: http://samtools.sourceforge.net/
 [platypus]: http://www.well.ox.ac.uk/platypus
+[vt]: https://github.com/atks/vt
 
 ## License
 

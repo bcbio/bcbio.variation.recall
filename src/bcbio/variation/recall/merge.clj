@@ -100,7 +100,7 @@
     (when (itx/needs-run? out-file)
       (spit input-list (string/join "\n" (rmap eprep/bgzip-index-vcf vcf-files (:cores config)))))
     (itx/run-cmd out-file
-                 "vcfcat `cat ~{input-list}` ~{bgzip-cmd} > ~{out-file}")))
+                 "vt concat `cat ~{input-list}` ~{bgzip-cmd} > ~{out-file}")))
 
 (defmethod concatenate-vcfs :bgzip
   [vcf-files out-file config]

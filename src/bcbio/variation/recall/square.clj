@@ -120,11 +120,8 @@
       (subset-sample-region vcf-file sample region (:region fnames))
       (intersect-variants (:region fnames) union-vcf ref-file (:existing fnames))
       (unique-variants union-vcf (:region fnames) ref-file (:needcall fnames))
-      (if (vcfutils/has-variants? (:needcall fnames))
-        (do
-          (recall-variants sample region (:needcall fnames) bam-file ref-file (:recall fnames) config)
-          (union-variants (:recall fnames) (:existing fnames) region ref-file out-file))
-        (merge/move-vcf (:region fnames) out-file)))
+      (recall-variants sample region (:needcall fnames) bam-file ref-file (:recall fnames) config)
+      (union-variants (:recall fnames) (:existing fnames) region ref-file out-file))
     out-file))
 
 (defn- sample-by-region-prep
