@@ -13,9 +13,11 @@
             [bcbio.variation.recall.vcfheader :as vcfheader]
             [bcbio.variation.recall.vcfutils :as vcfutils]
             [clojure.java.io :as io]
+            [clojure.java.shell :refer [sh]]
             [clojure.string :as string]
             [clojure.tools.cli :refer [parse-opts]]
-            [me.raynes.fs :as fs]))
+            [me.raynes.fs :as fs]
+            [version-clj.core :refer [version-compare]]))
 
 (defn subset-sample-region
   "Subset the input file to the given region and sample."
@@ -53,8 +55,8 @@
   (let [sample-file (str (fsp/file-root out-file) "-samples.txt")]
     (spit sample-file sample)
     (itx/run-cmd out-file
-                 "freebayes -b ~{bam-file} -@ ~{vcf-file} -l -f ~{ref-file} "
-                 "-r ~{(eprep/region->freebayes region)} -s ~{sample-file}  | "
+                 "freebayes -b ~{bam-file} --variant-input ~{vcf-file} --only-use-input-alleles "
+                 " -f ~{ref-file} -r ~{(eprep/region->freebayes region)} -s ~{sample-file}  | "
                  "bgzip > ~{out-file}")
     (eprep/bgzip-index-vcf out-file :remove-orig? true)))
 
@@ -159,11 +161,28 @@
                        [s b]))
                    bam-files)))
 
+(defn- check-versions
+  "Ensure we have up to date versions of required software for recalling."
+  [config]
+  (when (= :freebayes (:caller config))
+    (let [version (-> (sh "freebayes")
+                      :out
+                      (string/split #"\n")
+                      last
+                      (string/split #":")
+                      last
+                      string/trim)
+          want-version "v0.9.14-1"]
+      (when (neg? (version-compare version want-version))
+        (throw (Exception. (format "Require at least freebayes %s for recalling. Found %s"
+                                   want-version version)))))))
+
 (defn combine-vcfs
   "Combine VCF files with squaring off by recalling at uncalled variant positions."
   [orig-vcf-files bam-files ref-file out-file config]
   (let [dirs {:union (fsp/safe-mkdir (io/file (fs/parent out-file) "union"))
               :square (fsp/safe-mkdir (io/file (fs/parent out-file) "square"))}]
+    (check-versions config)
     (merge/prep-by-region (fn [vcf-files region merge-dir]
                             (vcfutils/ensure-no-dup-samples vcf-files)
                             (by-region vcf-files (sample-to-bam-map bam-files)
@@ -193,7 +212,7 @@
                            :parse-fn #(Integer/parseInt %)]
                           ["-m" "--caller CALLER" (str "Calling method to use: "
                                                        (string/join ", " (map name caller-opts)))
-                           :default "platypus"
+                           :default "freebayes"
                            :parse-fn #(keyword %)
                            :validate [#(contains? caller-opts %)
                                       (str "Supported calling options: "

@@ -28,7 +28,6 @@
                                      (concat [merge-vcf-file] vcf-files)))]
              (fsp/remove-path x))
            ?form)))
-
 (facts "Calculate ensemble set of variants from multiple inputs using realignment in a region."
   (let [region {:chrom "10" :start 250000 :end 399000}
         out-file (str (io/file data-dir "work" "10" "recall-10_250000_399000.vcf.gz"))
@@ -49,6 +48,7 @@
     (merge/combine-vcfs [(first vcf-files) merge-vcf-file] ref-file out-file config) => out-file))
 
 (facts "Square off variant calls from multiple samples, creating merged final file."
-  (let [out-file (str (io/file data-dir "work" "NA12878-10-square.vcf.gz"))]
+  (let [out-file (str (io/file data-dir "work" "NA12878-10-square.vcf.gz"))
+        fconfig (assoc config :caller :freebayes)]
     (square/combine-vcfs [(first vcf-files) merge-vcf-file] [bam-file bam-file]
-                         ref-file out-file config) => out-file))
+                         ref-file out-file fconfig) => out-file))
