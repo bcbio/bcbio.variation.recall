@@ -11,8 +11,10 @@
     (.startsWith (first (line-seq rdr)) "##fileformat=VCF")))
 
 (defn- is-bam?
+  "Handle CRAM and BAM compressed inputs."
   [f]
-  (.endsWith f ".bam"))
+  (or (.endsWith f ".bam")
+      (.endsWith f ".cram")))
 
 (defn- get-ftype
   [f]
@@ -42,7 +44,7 @@
         [[ftype f]]))))
 
 (defn vcf-bam-args
-  "Retrieve VCF and BAM files from supplied command line arguments.
+  "Retrieve VCF, BAM and CRAM files from supplied command line arguments.
    Returns a map of file types with available and missing."
   [xs]
   (reduce (fn [coll [ftype f]]

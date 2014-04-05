@@ -15,6 +15,7 @@
                r-data-dir (str (io/file "." "test" "data" "recall"))
                ref-file (str (io/file data-dir "chr10-start.fa"))
                bam-file (str (io/file data-dir "NA12878-10.bam"))
+               cram-file (str (io/file data-dir "NA12878-10.cram"))
                vcf-files (map #(str (io/file data-dir %))
                               ["NA12878-10-freebayes.vcf" "NA12878-10-gatk.vcf"
                                "NA12878-10-gatk-haplotype.vcf"])
@@ -51,4 +52,10 @@
   (let [out-file (str (io/file data-dir "work" "NA12878-10-square.vcf.gz"))
         fconfig (assoc config :caller :freebayes)]
     (square/combine-vcfs [(first vcf-files) merge-vcf-file] [bam-file bam-file]
+                         ref-file out-file fconfig) => out-file))
+
+(facts "Squaring off with CRAM input files"
+  (let [out-file (str (io/file data-dir "work" "NA12878-10-square.vcf.gz"))
+        fconfig (assoc config :caller :freebayes)]
+    (square/combine-vcfs [(first vcf-files) merge-vcf-file] [cram-file cram-file]
                          ref-file out-file fconfig) => out-file))

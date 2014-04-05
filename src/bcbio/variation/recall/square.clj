@@ -5,6 +5,8 @@
    without evidence for a variant, distinguishing true no-calls from reference
    calls."
   (:require [bcbio.align.bam :as bam]
+            [bcbio.align.cram :as cram]
+            [bcbio.align.greads :as greads]
             [bcbio.run.fsp :as fsp]
             [bcbio.run.itx :as itx]
             [bcbio.variation.ensemble.prep :as eprep]
@@ -117,13 +119,15 @@
   [sample vcf-file bam-file union-vcf region ref-file out-file config]
   (let [work-dir (fsp/safe-mkdir (str (fsp/file-root out-file) "-work"))
         fnames (into {} (map (fn [x] [(keyword x) (str (io/file work-dir (format "%s.vcf.gz" x)))])
-                                 ["region" "existing" "needcall" "recall"]))]
+                             ["region" "existing" "needcall" "recall"]))]
     (when (itx/needs-run? out-file)
-      (subset-sample-region vcf-file sample region (:region fnames))
-      (intersect-variants (:region fnames) union-vcf ref-file (:existing fnames))
-      (unique-variants union-vcf (:region fnames) ref-file (:needcall fnames))
-      (recall-variants sample region (:needcall fnames) bam-file ref-file (:recall fnames) config)
-      (union-variants (:recall fnames) (:existing fnames) region ref-file out-file))
+      (itx/with-temp-dir [tmp-dir (fs/parent out-file)]
+        (let [region-bam-file (greads/subset-in-region bam-file ref-file region tmp-dir)]
+          (subset-sample-region vcf-file sample region (:region fnames))
+          (intersect-variants (:region fnames) union-vcf ref-file (:existing fnames))
+          (unique-variants union-vcf (:region fnames) ref-file (:needcall fnames))
+          (recall-variants sample region (:needcall fnames) region-bam-file ref-file (:recall fnames) config)
+          (union-variants (:recall fnames) (:existing fnames) region ref-file out-file))))
     out-file))
 
 (defn- sample-by-region-prep
@@ -155,9 +159,11 @@
 
 (defn sample-to-bam-map
   "Prepare a map of sample names to BAM files."
-  [bam-files]
+  [bam-files ref-file]
   (into {} (mapcat (fn [b]
-                     (for [s (bam/sample-names b)]
+                     (for [s (case (fs/extension b)
+                               ".bam" (bam/sample-names b)
+                               ".cram" (cram/sample-names b ref-file))]
                        [s b]))
                    bam-files)))
 
@@ -185,21 +191,21 @@
     (check-versions config)
     (merge/prep-by-region (fn [vcf-files region merge-dir]
                             (vcfutils/ensure-no-dup-samples vcf-files)
-                            (by-region vcf-files (sample-to-bam-map bam-files)
+                            (by-region vcf-files (sample-to-bam-map bam-files ref-file)
                                        region ref-file (assoc dirs :merge merge-dir) out-file config))
                           orig-vcf-files ref-file out-file config)))
 
 (defn- usage [options-summary]
   (->> ["Perform squaring off for a set of called VCF files, recalling at no-call positions in each sample."
         ""
-        "Usage: bcbio-variation-recall square [options] out-file ref-file [<vcf-files, bam-files, or list-files>]"
+        "Usage: bcbio-variation-recall square [options] out-file ref-file [<vcf, bam, cram, or list files>]"
         ""
         "  out-file:    VCF (or bgzipped VCF) file to write merged output to"
         "  ref-file:    FASTA format genome reference file"
-        "  <remaining>: VCF files to recall and BAM files for each sample. Can be specified "
+        "  <remaining>: VCF files to recall and BAM or CRAM files for each sample. Can be specified "
         "               on the command line or as text files containing paths to files "
-        "               for processing. VCFs can be single or multi-sample and BAMs can be in "
-        "               any order but each VCF sample must have an associated BAM file to recall."
+        "               for processing. VCFs can be single or multi-sample and BAM/CRAMs can be in "
+        "               any order but each VCF sample must have an associated BAM/CRAM file to recall."
         ""
         "Options:"
         options-summary]

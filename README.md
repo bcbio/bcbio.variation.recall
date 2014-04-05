@@ -41,18 +41,18 @@ requires [leiningen].
 
     Perform squaring off for a set of called VCF files, recalling at no-call positions in each sample.
 
-    Usage: bcbio-variation-recall square [options] out-file ref-file [<vcf-files, bam-files, or list-files>]
+    Usage: bcbio-variation-recall square [options] out-file ref-file [<vcf, bam, cram, or list files>]
 
       out-file:    VCF (or bgzipped VCF) file to write merged output to
       ref-file:    FASTA format genome reference file
-      <remaining>: VCF files to recall and BAM files for each sample. Can be specified
+      <remaining>: VCF files to recall and BAM or CRAM files for each sample. Can be specified
                    on the command line or as text files containing paths to files
-                   for processing. VCFs can be single or multi-sample and BAMs can be in
-                   any order but each VCF sample must have an associated BAM file to recall.
+                   for processing. VCFs can be single or multi-sample and BAM/CRAMs can be in
+                   any order but each VCF sample must have an associated BAM/CRAM file to recall.
 
     Options:
-      -c, --cores CORES  1  Number of cores to use
-      -m, --caller CALLER  platypus  Calling method to use: freebayes, platypus
+      -c, --cores CORES    1          Number of cores to use
+      -m, --caller CALLER  freebayes  Calling method to use: freebayes, platypus
       -h, --help
 
 ### Ensemble
@@ -86,7 +86,9 @@ your path:
 - [bedtools][bedtools]
 - [bcftools (0.20+, with htslib)][bcftools]
 - [samtools][samtools]
+- [sambamba]
 - [platypus]
+- [scramble and cram_index, from staden io_lib][scramble]
 
 The [bcbio-nextgen][bcbio-nextgen] pipeline installs all this software automatically.
 
@@ -99,6 +101,8 @@ The [bcbio-nextgen][bcbio-nextgen] pipeline installs all this software automatic
 [samtools]: http://samtools.sourceforge.net/
 [platypus]: http://www.well.ox.ac.uk/platypus
 [vt]: https://github.com/atks/vt
+[scramble]: http://sourceforge.net/projects/staden/files/io_lib/
+[sambamba]: https://github.com/lomereiter/sambamba
 
 ## License
 

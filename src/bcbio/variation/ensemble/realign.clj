@@ -80,7 +80,7 @@
   [orig-vcf-files bam-files ref-file out-file config]
   (let [dirs {:ensemble (fsp/safe-mkdir (io/file (fs/parent out-file) "ensemble"))}]
     (merge/prep-by-region (fn [vcf-files region merge-dir]
-                            (by-region-multi vcf-files (square/sample-to-bam-map bam-files)
+                            (by-region-multi vcf-files (square/sample-to-bam-map bam-files ref-file)
                                              region ref-file (assoc dirs :merge merge-dir) out-file config))
                           orig-vcf-files ref-file out-file config)))
 
