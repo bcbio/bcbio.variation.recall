@@ -15,13 +15,13 @@
   [fai-file]
   (<< "cut -f 1-2 ~{fai-file} | awk -F $'\t' '{OFS=FS} {print $1,0,$2}'"))
 
-(defn vcf-breakpoints
+(defn- vcf-breakpoints
   "Prepare BED file of non-variant regions in the input VCF as parallel breakpoints.
    Uses bedtools to find covered regions by the VCF and subtracts this from the
    full reference genome to convert to non-covered/non-variant-call regions."
-  ([vcf-file sample ref-file work-dir]
+  ([vcf-file sample ref-file work-dir config]
      (let [split-dir (fsp/safe-mkdir (io/file work-dir "split" sample))
-           sample-vcf (vcfutils/subset-to-sample vcf-file sample split-dir)
+           sample-vcf (vcfutils/subset-to-sample vcf-file sample split-dir (:region config))
            out-file (fsp/add-file-part sample-vcf "splitpoints" split-dir ".bed")
            fai-file (gref/fasta-idx ref-file)]
        (itx/run-cmd out-file
@@ -30,8 +30,8 @@
                     "-b <(bedtools genomecov -i ~{sample-vcf} -g ~{fai-file} -bg | "
                     "     bedtools merge -d ~{merge-size}) "
                     "> ~{out-file}")))
-  ([vcf-file ref-file work-dir]
-     (vcf-breakpoints vcf-file (vcfutils/get-sample vcf-file) ref-file work-dir)))
+  ([vcf-file ref-file work-dir config]
+     (vcf-breakpoints vcf-file (vcfutils/get-sample vcf-file) ref-file work-dir config)))
 
 (defn group-breakpoints
   "Prepare BED file of shared breakpoints for all samples in supplied files."
@@ -42,7 +42,7 @@
                             [] vcf-files)
         out-file (fsp/add-file-part (first vcf-files) (format "combo-%s-splitpoints" (count vcf-samples))
                                     split-dir ".bed")
-        bp-beds (rmap (fn [[v s]] (vcf-breakpoints v s ref-file work-dir)) vcf-samples
+        bp-beds (rmap (fn [[v s]] (vcf-breakpoints v s ref-file work-dir config)) vcf-samples
                       (:cores config))
         str-bp-beds (string/join " " bp-beds)]
     (itx/run-cmd out-file

@@ -43,7 +43,7 @@
       (io/copy (io/file (first vcf-files)) (io/file out-file))
       (do
         (when (itx/needs-run? out-file)
-          (spit input-list (string/join "\n" vcf-files)))
+          (spit input-list (string/join "\n" (map eprep/bgzip-index-vcf vcf-files))))
         (itx/run-cmd out-file
                      "bcftools merge -O ~{(vcfutils/bcftools-out-type out-file)} "
                      "-r ~{(eprep/region->samstr region)} `cat ~{input-list}` "

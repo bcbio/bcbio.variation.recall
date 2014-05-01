@@ -52,18 +52,23 @@
   [f]
   (if (.endsWith f ".gz") "z" "v"))
 
-(defn subset-to-sample*
+(defn- subset-to-sample*
   "Do the actual work of subsetting a file, assumes multisample VCF"
-  [vcf-file sample out-file]
-  (let [out-type (bcftools-out-type out-file)]
+  [vcf-file sample out-file region]
+  (let [out-type (bcftools-out-type out-file)
+        region_str (if region (str "-r " region) "")]
     (itx/run-cmd out-file
-                 "bcftools view -s ~{sample} -O ~{out-type} ~{vcf-file} > ~{out-file}"))
+                 "bcftools view -s ~{sample} ~{region_str} -O ~{out-type} ~{vcf-file} > ~{out-file}"))
   out-file)
 
 (defn subset-to-sample
   "Subset a VCF file, retrieving a single sample from multisample VCF.
    If we already have a single sample VCF, return that."
-  [vcf-file sample out-dir]
-  (if (> (count (get-samples vcf-file)) 1)
-    (subset-to-sample* vcf-file sample (fsp/add-file-part vcf-file sample out-dir))
-    vcf-file))
+  ([vcf-file sample out-dir region]
+     (if (or region (> (count (get-samples vcf-file)) 1))
+       (let [ext (format "%s%s" sample (if region (str "-" (string/replace region #"[-:]" "_")) ""))
+             out-file (fsp/add-file-part vcf-file ext out-dir)]
+         (subset-to-sample* vcf-file sample out-file region))
+       vcf-file))
+  ([vcf-file sample out-dir]
+     (subset-to-sample vcf-file sample out-dir nil)))

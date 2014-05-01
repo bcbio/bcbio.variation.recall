@@ -53,6 +53,7 @@ requires [leiningen].
     Options:
       -c, --cores CORES    1          Number of cores to use
       -m, --caller CALLER  freebayes  Calling method to use: freebayes, platypus
+      -r, --region REGION             Genomic region to subset, in samtools format (chr1:100-200)
       -h, --help
 
 ### Ensemble

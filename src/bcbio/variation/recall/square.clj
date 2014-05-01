@@ -58,6 +58,7 @@
     (spit sample-file sample)
     (itx/run-cmd out-file
                  "freebayes -b ~{bam-file} --variant-input ~{vcf-file} --only-use-input-alleles "
+                 "--min-repeat-entropy 1 --experimental-gls "
                  " -f ~{ref-file} -r ~{(eprep/region->freebayes region)} -s ~{sample-file}  | "
                  "bgzip > ~{out-file}")
     (eprep/bgzip-index-vcf out-file :remove-orig? true)))
@@ -223,6 +224,7 @@
                            :validate [#(contains? caller-opts %)
                                       (str "Supported calling options: "
                                            (string/join ", " (map name caller-opts)))]]
+                          ["-r" "--region REGION" "Genomic region to subset, in samtools format (chr1:100-200)"]
                           ["-h" "--help"]])]
     (cond
      (:help options) (clhelp/exit 0 (usage summary))

@@ -16,6 +16,7 @@
 (defmethod subset-in-region :bam
   ^{:doc "BAM format. No op: return original file"}
   [fname ref-file region tmp-dir]
+  (bam/do-index fname)
   fname)
 
 (defmethod subset-in-region :cram

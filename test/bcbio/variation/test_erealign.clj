@@ -56,6 +56,8 @@
 
 (facts "Squaring off with CRAM input files"
   (let [out-file (str (io/file data-dir "work" "NA12878-10-square.vcf.gz"))
-        fconfig (assoc config :caller :freebayes)]
+        fconfig (-> config
+                    (assoc :caller :freebayes)
+                    (assoc :region "10:300000-400000"))]
     (square/combine-vcfs [(first vcf-files) merge-vcf-file] [cram-file cram-file]
                          ref-file out-file fconfig) => out-file))
