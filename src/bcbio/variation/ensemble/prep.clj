@@ -66,6 +66,7 @@
         vcf-files-str (string/join " " vcf-files)
         vcf-header "echo -e '##fileformat=VCFv4.1\\n#CHROM\\tPOS\\tID\\tREF\\tALT\\tQUAL\\tFILTER\\tINFO'"
         isec-to-vcf "awk -F'\t' '{ print $1 FS $2 FS \".\" FS $3 FS $4 FS \".\" FS \".\" FS \".\"}'"]
+    (println (<< "bcftools isec -n +1 -r ~{(region->samstr region)} ~{vcf-files-str}"))
     (itx/run-cmd out-file
                  "cat <(~{vcf-header}) "
                  "<(bcftools isec -n +1 -r ~{(region->samstr region)} ~{vcf-files-str} | ~{isec-to-vcf)) | "

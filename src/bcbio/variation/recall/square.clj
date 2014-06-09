@@ -224,7 +224,8 @@
                            :validate [#(contains? caller-opts %)
                                       (str "Supported calling options: "
                                            (string/join ", " (map name caller-opts)))]]
-                          ["-r" "--region REGION" "Genomic region to subset, in samtools format (chr1:100-200)"]
+                          ["-r" "--region REGION"
+                           "Genomic region to subset, in samtools format (chr1:100-200) or BED file"]
                           ["-h" "--help"]])]
     (cond
      (:help options) (clhelp/exit 0 (usage summary))

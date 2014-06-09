@@ -20,6 +20,7 @@
                               ["NA12878-10-freebayes.vcf" "NA12878-10-gatk.vcf"
                                "NA12878-10-gatk-haplotype.vcf"])
                merge-vcf-file (str (io/file r-data-dir "NA12878-1-10-gatk-haplotype.vcf"))
+               recall-bed (str (io/file r-data-dir "recall-regions.bed"))
                work-dir (str (io/file data-dir "work"))
                config {:cores 1 :caller :platypus}]
            (doseq [x (concat [work-dir]
@@ -58,6 +59,8 @@
   (let [out-file (str (io/file data-dir "work" "NA12878-10-square.vcf.gz"))
         fconfig (-> config
                     (assoc :caller :freebayes)
-                    (assoc :region "10:300000-400000"))]
+                    ;(assoc :region recall-bed)
+                    (assoc :region "10:300000-400000")
+                    )]
     (square/combine-vcfs [(first vcf-files) merge-vcf-file] [cram-file cram-file]
                          ref-file out-file fconfig) => out-file))

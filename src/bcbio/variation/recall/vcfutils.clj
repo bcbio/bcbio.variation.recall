@@ -3,7 +3,8 @@
   (:require [bcbio.run.fsp :as fsp]
             [bcbio.run.itx :as itx]
             [clojure.java.io :as io]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [me.raynes.fs :as fs]))
 
 (defn pog-reader
   "Plain or gzip input reader."
@@ -52,11 +53,34 @@
   [f]
   (if (.endsWith f ".gz") "z" "v"))
 
+(defn- region->bcftools
+  "Convert a region specification to a bcftools option, handling chr1:1-100 and BED files"
+  [region]
+  (cond
+   (and (fs/file? region) (fs/exists? region)) (str "-R " region)
+   region (str "-r " region)
+   :else ""))
+
+(defn- region->fileext
+  "Convert a region to a stable file extension, handling chr1:1-100 and BED files"
+  [region-orig]
+  (let [region (if (and (fs/file? region-orig) (fs/exists? region-orig))
+                 (with-open [rdr (io/reader region-orig)]
+                   (->> (line-seq rdr)
+                        (remove #(.startsWith % "track"))
+                        (remove #(.startsWith % "#"))
+                        first
+                        (#(string/split % #"\t"))
+                        (take 3)
+                        (string/join "_")))
+                 region-orig)]
+    (if region (str "-" (string/replace region #"[-:]" "_"))"")))
+
 (defn- subset-to-sample*
   "Do the actual work of subsetting a file, assumes multisample VCF"
   [vcf-file sample out-file region]
   (let [out-type (bcftools-out-type out-file)
-        region_str (if region (str "-r " region) "")]
+        region_str (region->bcftools region)]
     (itx/run-cmd out-file
                  "bcftools view -s ~{sample} ~{region_str} -O ~{out-type} ~{vcf-file} > ~{out-file}"))
   out-file)
@@ -66,7 +90,7 @@
    If we already have a single sample VCF, return that."
   ([vcf-file sample out-dir region]
      (if (or region (> (count (get-samples vcf-file)) 1))
-       (let [ext (format "%s%s" sample (if region (str "-" (string/replace region #"[-:]" "_")) ""))
+       (let [ext (format "%s%s" sample (region->fileext region))
              out-file (fsp/add-file-part vcf-file ext out-dir)]
          (subset-to-sample* vcf-file sample out-file region))
        vcf-file))
