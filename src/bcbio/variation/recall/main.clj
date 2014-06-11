@@ -40,4 +40,5 @@
       (println "Parallel merging, squaring off and ensemble calling for genomic variants\n")
       (println "Commands:")
       (doseq [k (sort (keys progs))]
-        (println (format "%-15s %s" (name k) (-> progs k :doc)))))))
+        (println (format "%-15s %s" (name k) (-> progs k :doc))))
+      (System/exit 1))))

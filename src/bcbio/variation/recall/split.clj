@@ -7,13 +7,26 @@
             [bcbio.variation.recall.vcfutils :as vcfutils]
             [clojure.core.strint :refer [<<]]
             [clojure.java.io :as io]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [me.raynes.fs :as fs]))
 
 (def ^{:private true} merge-size 25000)
 
+(defn- region->bed
+  "Convert specified input region into a BED file"
+  [region out-file]
+  (when region
+    (if (fs/file? region)
+      (io/copy (io/file region) (io/file out-file))
+      (spit out-file (str (string/join "\t" (string/split region #"[:-]")) "\n")))
+    out-file))
+
 (defn- fai->bed
-  [fai-file]
-  (<< "cut -f 1-2 ~{fai-file} | awk -F $'\t' '{OFS=FS} {print $1,0,$2}'"))
+  "Convert fasta reference file to genome, potentially subsetting by the region of interest."
+  [fai-file region base-file]
+  (let [region-file (region->bed region (fsp/add-file-part base-file "-inputregion" nil ".bed"))]
+    (str (<< "cut -f 1-2 ~{fai-file} | awk -F $'\\t' '{OFS=FS} {print $1,0,$2}'")
+         (if region-file (<< " | bedtools intersect -a stdin -b ~{region-file}") ""))))
 
 (defn- vcf-breakpoints
   "Prepare BED file of non-variant regions in the input VCF as parallel breakpoints.
@@ -24,12 +37,14 @@
            sample-vcf (vcfutils/subset-to-sample vcf-file sample split-dir (:region config))
            out-file (fsp/add-file-part sample-vcf "splitpoints" split-dir ".bed")
            fai-file (gref/fasta-idx ref-file)]
-       (itx/run-cmd out-file
-                    "bedtools subtract "
-                    "-a <(~{(fai->bed fai-file)}) "
-                    "-b <(bedtools genomecov -i ~{sample-vcf} -g ~{fai-file} -bg | "
-                    "     bedtools merge -d ~{merge-size}) "
-                    "> ~{out-file}")))
+       (if (vcfutils/has-variants? sample-vcf)
+         (itx/run-cmd out-file
+                      "bedtools subtract "
+                      "-a <(~{(fai->bed fai-file (:region config) out-file)}) "
+                      "-b <(bedtools genomecov -i ~{sample-vcf} -g ~{fai-file} -bg | "
+                      "     bedtools merge -d ~{merge-size}) "
+                      "> ~{out-file}")
+         (region->bed (:region config) out-file))))
   ([vcf-file ref-file work-dir config]
      (vcf-breakpoints vcf-file (vcfutils/get-sample vcf-file) ref-file work-dir config)))
 
@@ -47,7 +62,7 @@
         str-bp-beds (string/join " " bp-beds)]
     (itx/run-cmd out-file
                  "bedtools multiinter -i ~{str-bp-beds} | "
-                 "awk -F $'\t' '{OFS=FS} $4 >= ~{(count bp-beds)} {print $1,$2,$3}' "
+                 "awk -F $'\\t' '{OFS=FS} $4 >= ~{(count bp-beds)} {print $1,$2,$3}' "
                  "> ~{out-file}")))
 
 (defn group-pregions
@@ -59,7 +74,7 @@
         out-file (fsp/add-file-part (fsp/remove-file-part bp-file "splitpoints") "pregions")
         fai-file (gref/fasta-idx ref-file)]
     (itx/run-cmd out-file
-                 "bedtools subtract -a <(~{(fai->bed fai-file)}) -b ~{bp-file} | "
+                 "bedtools subtract -a <(~{(fai->bed fai-file (:region config) out-file)}) -b ~{bp-file} | "
                  "bedtools slop -b ~{pad-size} -g ~{fai-file} -i | "
                  "bedtools merge -d ~{merge-size} "
                  "> ~{out-file}")))
