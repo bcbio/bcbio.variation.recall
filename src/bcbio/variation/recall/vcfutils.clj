@@ -61,10 +61,10 @@
    region (str "-r " region)
    :else ""))
 
-(defn- region->fileext
+(defn region->fileext
   "Convert a region to a stable file extension, handling chr1:1-100 and BED files"
   [region-orig]
-  (let [region (if (and (fs/file? region-orig) (fs/exists? region-orig))
+  (let [region (if (and region-orig (fs/file? region-orig) (fs/exists? region-orig))
                  (with-open [rdr (io/reader region-orig)]
                    (->> (line-seq rdr)
                         (remove #(.startsWith % "track"))
@@ -74,7 +74,9 @@
                         (take 3)
                         (string/join "_")))
                  region-orig)]
-    (if region (str "-" (string/replace region #"[-:]" "_"))"")))
+    (if region
+      (str "-" (string/replace region #"[-:]" "_"))
+      "")))
 
 (defn- subset-to-sample*
   "Do the actual work of subsetting a file, assumes multisample VCF"

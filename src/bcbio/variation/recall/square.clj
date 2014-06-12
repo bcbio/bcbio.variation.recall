@@ -14,6 +14,7 @@
             [bcbio.variation.recall.merge :as merge]
             [bcbio.variation.recall.vcfheader :as vcfheader]
             [bcbio.variation.recall.vcfutils :as vcfutils]
+            [clojure.core.strint :refer [<<]]
             [clojure.java.io :as io]
             [clojure.java.shell :refer [sh]]
             [clojure.string :as string]
@@ -54,12 +55,13 @@
 (defmethod recall-variants :freebayes
   ^{:doc "Perform variant recalling at specified positions with FreeBayes."}
   [sample region vcf-file bam-file ref-file out-file config]
-  (let [sample-file (str (fsp/file-root out-file) "-samples.txt")]
+  (let [sample-file (str (fsp/file-root out-file) "-samples.txt")
+        ploidy-str (if (:ploidy config) (format "-p %s" (:ploidy config)) "")]
     (spit sample-file sample)
     (itx/run-cmd out-file
                  "freebayes -b ~{bam-file} --variant-input ~{vcf-file} --only-use-input-alleles "
-                 "--min-repeat-entropy 1 --experimental-gls "
-                 " -f ~{ref-file} -r ~{(eprep/region->freebayes region)} -s ~{sample-file}  | "
+                 "--min-repeat-entropy 1 --experimental-gls ~{ploidy-str} "
+                 "-f ~{ref-file} -r ~{(eprep/region->freebayes region)} -s ~{sample-file}  | "
                  "bgzip > ~{out-file}")
     (eprep/bgzip-index-vcf out-file :remove-orig? true)))
 
@@ -142,6 +144,32 @@
      (itx/needs-run? out-file) (sample-by-region sample vcf-file bam-file union-vcf region ref-file out-file config)
      :else out-file)))
 
+(defn- get-ploidy-line
+  "Parse called ploidy from a VCF genotype call"
+  [line]
+  (let [[format call] (string/split line #"\t")
+        gt-index (.indexOf (string/split format #":") "GT")]
+    (when-not (neg? gt-index)
+      (-> (string/split call #":")
+          (nth gt-index)
+          (string/split #"[|/]")
+          count))))
+
+(defn- get-ploidy-file
+  "Retrieve ploidy from a single VCF file by grepping out FORMAT lines."
+  [vcf-file region]
+  (let [lines (string/split
+               (:out (sh "bash" "-c"
+                         (<< "bcftools view ~{vcf-file} -r ~{(eprep/region->samstr region)} "
+                             "| grep -v '#' | cut -f 9-10 | head -5")))
+               #"\n")]
+    (remove nil? (map get-ploidy-line lines))))
+
+(defn- get-existing-ploidy
+  "Check ploidy in a region, cleanly handling recalling in mixed diploid/haploid (human chrM and sex chromosomes)"
+  [vcf-files region]
+  (apply max (mapcat #(get-ploidy-file % region) vcf-files)))
+
 (defn by-region
   "Square off a genomic region, identifying variants from all samples and recalling at uncalled positions.
     - Identifies all called variants from all samples
@@ -149,6 +177,7 @@
     - Merge all variant files in the region together."
   [vcf-files bam-files region ref-file dirs out-file config]
   (let [union-vcf (eprep/create-union vcf-files ref-file region (:union dirs))
+        config (assoc config :ploidy (get-existing-ploidy vcf-files region))
         recall-vcfs (map (fn [[sample vcf-file]]
                            (sample-by-region-prep sample vcf-file (get bam-files sample)
                                                   union-vcf region ref-file (:square dirs) config))

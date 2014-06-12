@@ -24,7 +24,7 @@
 (defn- fai->bed
   "Convert fasta reference file to genome, potentially subsetting by the region of interest."
   [fai-file region base-file]
-  (let [region-file (region->bed region (fsp/add-file-part base-file "-inputregion" nil ".bed"))]
+  (let [region-file (region->bed region (fsp/add-file-part base-file "inputregion" nil ".bed"))]
     (str (<< "cut -f 1-2 ~{fai-file} | awk -F $'\\t' '{OFS=FS} {print $1,0,$2}'")
          (if region-file (<< " | bedtools intersect -a stdin -b ~{region-file}") ""))))
 
@@ -32,8 +32,8 @@
   "Prepare BED file of non-variant regions in the input VCF as parallel breakpoints.
    Uses bedtools to find covered regions by the VCF and subtracts this from the
    full reference genome to convert to non-covered/non-variant-call regions."
-  ([vcf-file sample ref-file work-dir config]
-     (let [split-dir (fsp/safe-mkdir (io/file work-dir "split" sample))
+  ([vcf-file sample ref-file split-dir work-dir config]
+     (let [split-dir (fsp/safe-mkdir (io/file split-dir sample))
            sample-vcf (vcfutils/subset-to-sample vcf-file sample split-dir (:region config))
            out-file (fsp/add-file-part sample-vcf "splitpoints" split-dir ".bed")
            fai-file (gref/fasta-idx ref-file)]
@@ -45,19 +45,19 @@
                       "     bedtools merge -d ~{merge-size}) "
                       "> ~{out-file}")
          (region->bed (:region config) out-file))))
-  ([vcf-file ref-file work-dir config]
-     (vcf-breakpoints vcf-file (vcfutils/get-sample vcf-file) ref-file work-dir config)))
+  ([vcf-file ref-file split-dir work-dir config]
+     (vcf-breakpoints vcf-file (vcfutils/get-sample vcf-file) ref-file split-dir work-dir config)))
 
 (defn group-breakpoints
   "Prepare BED file of shared breakpoints for all samples in supplied files."
   [vcf-files ref-file work-dir config]
-  (let [split-dir (fsp/safe-mkdir (io/file work-dir "split"))
+  (let [split-dir (fsp/safe-mkdir (io/file work-dir "split" (vcfutils/region->fileext (:region config))))
         vcf-samples (reduce (fn [coll vcf-file]
                               (concat coll (map (fn [s] [vcf-file s]) (vcfutils/get-samples vcf-file))))
                             [] vcf-files)
         out-file (fsp/add-file-part (first vcf-files) (format "combo-%s-splitpoints" (count vcf-samples))
                                     split-dir ".bed")
-        bp-beds (rmap (fn [[v s]] (vcf-breakpoints v s ref-file work-dir config)) vcf-samples
+        bp-beds (rmap (fn [[v s]] (vcf-breakpoints v s ref-file work-dir split-dir config)) vcf-samples
                       (:cores config))
         str-bp-beds (string/join " " bp-beds)]
     (itx/run-cmd out-file
