@@ -42,7 +42,8 @@
                       "bedtools subtract "
                       "-a <(~{(fai->bed fai-file (:region config) out-file)}) "
                       "-b <(bedtools genomecov -i ~{sample-vcf} -g ~{fai-file} -bg | "
-                      "     bedtools merge -d ~{merge-size}) "
+                      "     bedtools merge -d ~{merge-size}) | "
+                      " sort -k 1,1 -k2,2 -n "
                       "> ~{out-file}")
          (region->bed (:region config) out-file))))
   ([vcf-file ref-file split-dir work-dir config]
