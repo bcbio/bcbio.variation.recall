@@ -4,7 +4,8 @@
             [bcbio.run.itx :as itx]
             [clojure.java.io :as io]
             [clojure.string :as string]
-            [me.raynes.fs :as fs]))
+            [me.raynes.fs :as fs]
+            [taoensso.timbre :as timbre]))
 
 (defn pog-reader
   "Plain or gzip input reader."
@@ -46,8 +47,11 @@
   "Ensure there are sample name duplicates in the VCF files"
   [vcf-files]
   (let [dups (duplicate-samples vcf-files)]
-    (assert (empty? dups) (format "Found duplicate samples %s in VCFs for merging: %s"
-                                  (vec dups) (vec vcf-files)))))
+    (when-not (empty? dups)
+      (let [e (Exception. (format "Found duplicate samples %s in VCFs for merging: %s"
+                                  (vec dups) (vec vcf-files)))]
+        (timbre/error e)
+        (throw e)))))
 
 (defn bcftools-out-type
   [f]
