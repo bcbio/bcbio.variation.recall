@@ -26,7 +26,7 @@
   [fai-file region base-file]
   (let [region-file (region->bed region (fsp/add-file-part base-file "inputregion" nil ".bed"))]
     (str (<< "cut -f 1-2 ~{fai-file} | awk -F $'\\t' '{OFS=FS} {print $1,0,$2}'")
-         (if region-file (<< " | bedtools intersect -a stdin -b ~{region-file}") ""))))
+         (if region-file (<< " | bedtools intersect -a stdin -b ~{region-file} | sort -k1,1 -k2,2 -n") ""))))
 
 (defn- vcf-breakpoints
   "Prepare BED file of non-variant regions in the input VCF as parallel breakpoints.
@@ -42,7 +42,8 @@
                       "bedtools subtract "
                       "-a <(~{(fai->bed fai-file (:region config) out-file)}) "
                       "-b <(bedtools genomecov -i ~{sample-vcf} -g ~{fai-file} -bg | "
-                      "     bedtools merge -d ~{merge-size}) "
+                      "     bedtools merge -d ~{merge-size}) | "
+                      " sort -k 1,1 -k2,2 -n "
                       "> ~{out-file}")
          (region->bed (:region config) out-file))))
   ([vcf-file ref-file split-dir work-dir config]
