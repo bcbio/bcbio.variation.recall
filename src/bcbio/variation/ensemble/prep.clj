@@ -12,7 +12,7 @@
   "Tabix index input VCF inside a transactional directory."
   [bgzip-file]
   (let [tabix-file (str bgzip-file ".tbi")]
-    (when (itx/needs-run? tabix-file)
+    (when (or (itx/needs-run? tabix-file) (not (fsp/up-to-date? tabix-file bgzip-file)))
       (itx/with-tx-file [tx-tabix-file tabix-file]
         (let [tx-bgzip-file (fsp/file-root tx-tabix-file)
               full-bgzip-file (str (fs/file bgzip-file))

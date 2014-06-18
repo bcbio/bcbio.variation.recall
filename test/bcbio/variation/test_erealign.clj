@@ -30,6 +30,7 @@
                                      (concat [merge-vcf-file] vcf-files)))]
              (fsp/remove-path x))
            ?form)))
+
 (facts "Calculate ensemble set of variants from multiple inputs using realignment in a region."
   (let [region {:chrom "10" :start 250000 :end 399000}
         out-file (str (io/file data-dir "work" "10" "recall-10_250000_399000.vcf.gz"))
@@ -43,7 +44,7 @@
 
 (facts "Identify split breakpoints for parallel execution"
   (let [out-file (str (io/file data-dir "work" "split" "NA12878-10-freebayes-combo-3-pregions.bed"))]
-    (rsplit/group-pregions vcf-files ref-file work-dir config) => out-file))
+    (second (rsplit/group-pregions vcf-files ref-file work-dir config)) => out-file))
 
 (facts "Merge multiple input files, running in parallel over small regions"
   (let [out-file (str (io/file data-dir "work" "NA12878-10-merge.vcf.gz"))]
