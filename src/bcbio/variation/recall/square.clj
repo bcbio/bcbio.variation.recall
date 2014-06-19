@@ -187,7 +187,7 @@
                                  vcf-files))]
     (merge/region-merge :bcftools recall-vcfs region (:merge dirs) out-file)))
 
-(defn sample-to-bam-map
+(defn- sample-to-bam-map*
   "Prepare a map of sample names to BAM files."
   [bam-files ref-file]
   (into {} (mapcat (fn [b]
@@ -196,6 +196,17 @@
                                ".cram" (cram/sample-names b ref-file))]
                        [s b]))
                    bam-files)))
+
+(defn sample-to-bam-map
+  "Prepare a map of sample names to BAM files."
+  [bam-files ref-file cache-dir]
+  (let [cache-file (fsp/add-file-part (first bam-files) (format "%s-samplemap" (count bam-files))
+                                      cache-dir ".yaml")]
+    (if (itx/needs-run? cache-file)
+      (let [bam-map (sample-to-bam-map* bam-files ref-file)]
+        (spit cache-file (pr-str bam-map))
+        (sample-to-bam-map bam-files ref-file cache-dir))
+      (read-string (slurp cache-file)))))
 
 (defn- check-versions
   "Ensure we have up to date versions of required software for recalling."
@@ -217,12 +228,14 @@
   "Combine VCF files with squaring off by recalling at uncalled variant positions."
   [orig-vcf-files bam-files ref-file out-file config]
   (let [dirs {:union (fsp/safe-mkdir (io/file (fs/parent out-file) "union"))
-              :square (fsp/safe-mkdir (io/file (fs/parent out-file) "square"))}]
+              :square (fsp/safe-mkdir (io/file (fs/parent out-file) "square"))
+              :inprep (fsp/safe-mkdir (io/file (fs/parent out-file) "inprep"))}
+        bam-map (sample-to-bam-map bam-files ref-file (:inprep dirs))]
     (check-versions config)
     (merge/prep-by-region (fn [vcf-files region merge-dir]
                             (vcfutils/ensure-no-dup-samples vcf-files)
-                            (by-region vcf-files (sample-to-bam-map bam-files ref-file)
-                                       region ref-file (assoc dirs :merge merge-dir) out-file config))
+                            (by-region vcf-files bam-map region ref-file
+                                       (assoc dirs :merge merge-dir) out-file config))
                           orig-vcf-files ref-file out-file config)))
 
 (defn- usage [options-summary]
