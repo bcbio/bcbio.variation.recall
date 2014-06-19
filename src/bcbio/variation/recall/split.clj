@@ -9,6 +9,7 @@
             [clojure.core.strint :refer [<<]]
             [clojure.java.io :as io]
             [clojure.string :as string]
+            [ordered.map :refer [ordered-map]]
             [me.raynes.fs :as fs]))
 
 (def ^{:private true} merge-size 25000)
@@ -29,6 +30,29 @@
     (str (<< "cut -f 1-2 ~{fai-file} | awk -F $'\\t' '{OFS=FS} {print $1,0,$2}'")
          (if region-file (<< " | bedtools intersect -a stdin -b ~{region-file} | sort -k1,1 -k2,2 -n") ""))))
 
+(defn- regional-faibed
+  "Convert a full genome fai file into the current genome region in BED format."
+  [fai-file region base-file]
+  (let [out-file (fsp/add-file-part base-file "faibed" nil ".bed")]
+    (itx/run-cmd out-file
+                 "~{(fai->bed fai-file region base-file)} > ~{out-file}")))
+
+(defn- faibed->fai
+  "Convert a fai BED file from regional-faibed into a true fai file."
+  [faibed-file]
+  (let [out-file (fsp/add-file-part faibed-file "fai" nil ".fai")]
+    (when (itx/needs-run? out-file)
+      (itx/with-tx-file [tx-out-file out-file]
+        (with-open [rdr (io/reader faibed-file)
+                    wtr (io/writer tx-out-file)]
+          (let [chroms (reduce (fn [coll line]
+                                 (let [[chrom _ end] (take 3 (string/split line #"\t"))]
+                                   (assoc coll chrom (max (Integer/parseInt end) (get coll chrom 0)))))
+                               (ordered-map) (line-seq rdr))]
+            (doseq [[chrom size] chroms]
+              (.write wtr (format "%s\t%s\n" chrom size)))))))
+    out-file))
+
 (defn- vcf-breakpoints
   "Prepare BED file of non-variant regions in the input VCF as parallel breakpoints.
    Uses bedtools to find covered regions by the VCF and subtracts this from the
@@ -37,12 +61,13 @@
      (let [split-dir (fsp/safe-mkdir (io/file split-dir sample))
            sample-vcf (eprep/bgzip-index-vcf (vcfutils/subset-to-sample vcf-file sample split-dir (:region config)))
            out-file (fsp/add-file-part sample-vcf "splitpoints" split-dir ".bed")
-           fai-file (gref/fasta-idx ref-file)]
+           fai-bed-file (regional-faibed (gref/fasta-idx ref-file) (:region config) out-file)
+           fai-file (faibed->fai fai-bed-file)]
        {:vcf sample-vcf
         :bed (if (vcfutils/has-variants? sample-vcf)
                (itx/run-cmd out-file
                             "bedtools subtract "
-                            "-a <(~{(fai->bed fai-file (:region config) out-file)}) "
+                            "-a ~{fai-bed-file} "
                             "-b <(bedtools genomecov -i ~{sample-vcf} -g ~{fai-file} -bg | "
                             "     bedtools merge -d ~{merge-size}) | "
                             " sort -k 1,1 -k2,2 -n "
