@@ -137,8 +137,7 @@
   "Prepare for squaring off a sample in a region, setup out file and check conditions.
    We only can perform squaring off with a BAM file for the sample."
   [sample vcf-file bam-file union-vcf region ref-file out-dir config]
-  (let [out-file (str (io/file (fsp/safe-mkdir (io/file out-dir (get region :chrom "nochrom")))
-                               (format "%s-%s.vcf.gz" sample (eprep/region->safestr region))))]
+  (let [out-file (str (io/file out-dir (format "%s-%s.vcf.gz" sample (eprep/region->safestr region))))]
     (cond
      (nil? bam-file) (subset-sample-region vcf-file sample region out-file)
      (itx/needs-run? out-file) (sample-by-region sample vcf-file bam-file union-vcf region ref-file out-file config)
@@ -178,14 +177,17 @@
   [vcf-files bam-files region ref-file dirs out-file config]
   (let [union-vcf (eprep/create-union vcf-files ref-file region (:union dirs))
         config (assoc config :ploidy (get-existing-ploidy vcf-files region))
+        region-square-dir (fsp/safe-mkdir (io/file (:square dirs) (get region :chrom "nochrom")
+                                                   (eprep/region->safestr region)))
+        region-merge-dir (fsp/safe-mkdir (str region-square-dir "-merge"))
         recall-vcfs (map (fn [[sample vcf-file]]
                            (sample-by-region-prep sample vcf-file (get bam-files sample)
-                                                  union-vcf region ref-file (:square dirs) config))
+                                                  union-vcf region ref-file region-square-dir config))
                          (mapcat (fn [vf]
                                    (for [s (vcfutils/get-samples vf)]
                                      [s vf]))
                                  vcf-files))]
-    (merge/region-merge :bcftools recall-vcfs region (:merge dirs) out-file)))
+    (merge/region-merge :bcftools recall-vcfs region region-merge-dir out-file)))
 
 (defn- sample-to-bam-map*
   "Prepare a map of sample names to BAM files."

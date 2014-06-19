@@ -1,6 +1,7 @@
 (ns bcbio.variation.test-erealign
   "Tests for ensemble variant consolidation with local realignment."
-  (:require [bcbio.variation.ensemble.realign :as erealign]
+  (:require [bcbio.variation.ensemble.prep :as eprep]
+            [bcbio.variation.ensemble.realign :as erealign]
             [bcbio.variation.recall.merge :as merge]
             [bcbio.variation.recall.split :as rsplit]
             [bcbio.variation.recall.square :as square]
@@ -33,10 +34,11 @@
 
 (facts "Calculate ensemble set of variants from multiple inputs using realignment in a region."
   (let [region {:chrom "10" :start 250000 :end 399000}
-        out-file (str (io/file data-dir "work" "10" "recall-10_250000_399000.vcf.gz"))
         dirs {:ensemble work-dir}
+        e-dir (fsp/safe-mkdir (io/file work-dir (eprep/region->safestr region)))
+        out-file (str (io/file e-dir "recall-10_250000_399000.vcf.gz"))
         sample "NA12878-2"]
-    (erealign/by-region sample region vcf-files bam-file ref-file dirs config) => out-file))
+    (erealign/by-region sample region vcf-files bam-file ref-file dirs e-dir config) => out-file))
 
 (facts "Calculate ensemble set of variants from multiple inputs using realignment over entire region."
   (let [out-file (str (io/file work-dir "NA12878-2-ensemble.vcf.gz"))]

@@ -48,9 +48,8 @@
 
 (defn by-region
   "Realign and recall variants in a defined genomic region."
-  [sample region vcf-files bam-file ref-file dirs config]
-  (let [out-file (str (io/file (fsp/safe-mkdir (io/file (:ensemble dirs) (get region :chrom "nochrom")))
-                               (format "%s-%s.vcf.gz" sample (eprep/region->safestr region))))
+  [sample region vcf-files bam-file ref-file dirs e-dir config]
+  (let [out-file (str (io/file e-dir (format "%s-%s.vcf.gz" sample (eprep/region->safestr region))))
         work-dir (str (.getParentFile (io/file out-file)))
         prep-dir (fsp/safe-mkdir (io/file work-dir (format "recall-%s-prep" (eprep/region->safestr region))))
         union-dir (fsp/safe-mkdir (io/file work-dir "union"))
@@ -67,13 +66,16 @@
 (defn by-region-multi
   "Realign and recall variants in a region, handling multiple sample inputs."
   [vcf-files bam-files region ref-file dirs out-file config]
-  (let [final-vcfs (->> vcf-files
+  (let [region-e-dir (fsp/safe-mkdir (io/file (:ensemble dirs) (get region :chrom "nochrom")
+                                              (eprep/region->safestr region)))
+        region-merge-dir (fsp/safe-mkdir (str region-e-dir "-merge"))
+        final-vcfs (->> vcf-files
                         (mapcat #(for [s (vcfutils/get-samples %)] [s %]))
                         (group-by first)
                         (map (fn [[sample s-vcfs]]
                                (by-region sample region (map second s-vcfs) (get bam-files sample)
-                                          ref-file dirs config))))]
-    (merge/region-merge :bcftools final-vcfs region (:merge dirs) out-file)))
+                                          ref-file dirs region-e-dir config))))]
+    (merge/region-merge :bcftools final-vcfs region region-merge-dir out-file)))
 
 (defn ensemble-vcfs
   "Combine VCF files with squaring off by recalling at uncalled variant positions."
