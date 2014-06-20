@@ -4,6 +4,7 @@
   :license {:name "MIT" :url "http://www.opensource.org/licenses/mit-license.html"}
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/tools.cli "0.3.0"]
+                 [ordered "1.3.2"]
                  [version-clj "0.1.0"]
                  [bcbio.run "0.0.1-SNAPSHOT"]
                  [org.clojars.chapmanb/picard "1.107"]

@@ -9,6 +9,7 @@
             [bcbio.align.greads :as greads]
             [bcbio.run.fsp :as fsp]
             [bcbio.run.itx :as itx]
+            [bcbio.run.parallel :refer [rmap]]
             [bcbio.variation.ensemble.prep :as eprep]
             [bcbio.variation.recall.clhelp :as clhelp]
             [bcbio.variation.recall.merge :as merge]
@@ -180,13 +181,16 @@
         region-square-dir (fsp/safe-mkdir (io/file (:square dirs) (get region :chrom "nochrom")
                                                    (eprep/region->safestr region)))
         region-merge-dir (fsp/safe-mkdir (str region-square-dir "-merge"))
-        recall-vcfs (map (fn [[sample vcf-file]]
-                           (sample-by-region-prep sample vcf-file (get bam-files sample)
-                                                  union-vcf region ref-file region-square-dir config))
-                         (mapcat (fn [vf]
-                                   (for [s (vcfutils/get-samples vf)]
-                                     [s vf]))
-                                 vcf-files))]
+        recall-vcfs (->> (rmap (fn [[sample vcf-file]]
+                                 [sample (sample-by-region-prep sample vcf-file (get bam-files sample)
+                                                                union-vcf region ref-file region-square-dir config)])
+                               (mapcat (fn [vf]
+                                         (for [s (vcfutils/get-samples vf)]
+                                           [s vf]))
+                                       vcf-files) (:cores config))
+                         (into [])
+                         (sort-by first)
+                         (map second))]
     (merge/region-merge :bcftools recall-vcfs region region-merge-dir out-file)))
 
 (defn- sample-to-bam-map*
@@ -203,7 +207,7 @@
   "Prepare a map of sample names to BAM files."
   [bam-files ref-file cache-dir]
   (let [cache-file (fsp/add-file-part (first bam-files) (format "%s-samplemap" (count bam-files))
-                                      cache-dir ".yaml")]
+                                      cache-dir ".edn")]
     (if (itx/needs-run? cache-file)
       (let [bam-map (sample-to-bam-map* bam-files ref-file)]
         (spit cache-file (pr-str bam-map))

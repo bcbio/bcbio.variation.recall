@@ -12,7 +12,7 @@
   "Tabix index input VCF inside a transactional directory."
   [bgzip-file]
   (let [tabix-file (str bgzip-file ".tbi")]
-    (when (or (itx/needs-run? tabix-file) (not (fsp/up-to-date? tabix-file bgzip-file)))
+    (when (or (itx/needs-run? tabix-file) (not (itx/up-to-date? tabix-file bgzip-file)))
       (itx/with-tx-file [tx-tabix-file tabix-file]
         (let [tx-bgzip-file (fsp/file-root tx-tabix-file)
               full-bgzip-file (str (fs/file bgzip-file))
@@ -63,12 +63,12 @@
 (defn create-union
   "Create a minimal union file with inputs from multiple variant callers in the given region."
   [vcf-files ref-file region out-dir]
-  (let [out-file (str (io/file out-dir (str "union-" (region->safestr region) ".vcf")))
+  (let [out-file (str (io/file out-dir (str "union-" (region->safestr region) ".vcf.gz")))
         vcf-files-str (string/join " " vcf-files)
         vcf-header "echo -e '##fileformat=VCFv4.1\\n#CHROM\\tPOS\\tID\\tREF\\tALT\\tQUAL\\tFILTER\\tINFO'"
         isec-to-vcf "awk -F'\\t' '{ print $1 FS $2 FS \".\" FS $3 FS $4 FS \".\" FS \".\" FS \".\"}'"]
     (itx/run-cmd out-file
                  "cat <(~{vcf-header}) "
                  "<(bcftools isec -n +1 -r ~{(region->samstr region)} ~{vcf-files-str} | ~{isec-to-vcf)) | "
-                 "vcfcreatemulti > ~{out-file}")
+                 "vcfcreatemulti | bgzip -c > ~{out-file}")
     (bgzip-index-vcf out-file :remove-orig? true)))

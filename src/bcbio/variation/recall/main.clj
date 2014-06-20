@@ -2,7 +2,8 @@
   (:require [bcbio.variation.recall.merge]
             [bcbio.variation.recall.square]
             [bcbio.variation.ensemble.realign]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [taoensso.timbre :as timbre])
   (:gen-class))
 
 (defn version
@@ -30,7 +31,8 @@
   (if-let [to-run (get progs (keyword (first args)))]
     (try
       (apply (:main to-run) (rest args))
-      (catch Throwable t
+      (catch Exception e
+        (timbre/error e)
         (shutdown-agents)
         (System/exit 1))
       (finally
