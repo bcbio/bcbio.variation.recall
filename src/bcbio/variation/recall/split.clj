@@ -37,22 +37,6 @@
     (itx/run-cmd out-file
                  "~{(fai->bed fai-file region base-file)} > ~{out-file}")))
 
-(defn- faibed->fai
-  "Convert a fai BED file from regional-faibed into a true fai file."
-  [faibed-file]
-  (let [out-file (fsp/add-file-part faibed-file "fai" nil ".fai")]
-    (when (itx/needs-run? out-file)
-      (itx/with-tx-file [tx-out-file out-file]
-        (with-open [rdr (io/reader faibed-file)
-                    wtr (io/writer tx-out-file)]
-          (let [chroms (reduce (fn [coll line]
-                                 (let [[chrom _ end] (take 3 (string/split line #"\t"))]
-                                   (assoc coll chrom (max (Integer/parseInt end) (get coll chrom 0)))))
-                               (ordered-map) (line-seq rdr))]
-            (doseq [[chrom size] chroms]
-              (.write wtr (format "%s\t%s\n" chrom size)))))))
-    out-file))
-
 (defn- vcf-breakpoints
   "Prepare BED file of non-variant regions in the input VCF as parallel breakpoints.
    Uses bedtools to find covered regions by the VCF and subtracts this from the
@@ -61,16 +45,16 @@
      (let [split-dir (fsp/safe-mkdir (io/file split-dir sample))
            sample-vcf (eprep/bgzip-index-vcf (vcfutils/subset-to-sample vcf-file sample split-dir (:region config)))
            out-file (fsp/add-file-part sample-vcf "splitpoints" split-dir ".bed")
-           fai-bed-file (regional-faibed (gref/fasta-idx ref-file) (:region config) out-file)
-           fai-file (faibed->fai fai-bed-file)]
+           fai-file (gref/fasta-idx ref-file)
+           fai-bed-file (regional-faibed fai-file (:region config) out-file)]
        {:vcf sample-vcf
         :bed (if (vcfutils/has-variants? sample-vcf)
                (itx/run-cmd out-file
                             "bedtools subtract "
                             "-a ~{fai-bed-file} "
-                            "-b <(bedtools genomecov -i ~{sample-vcf} -g ~{fai-file} -bg | "
-                            "     bedtools merge -d ~{merge-size}) | "
-                            " sort -k 1,1 -k2,2 -n "
+                            "-b <(bedtools slop -i ~{sample-vcf} -b 10 -g ~{fai-file}"
+                            "     | bedtools merge -d ~{merge-size} -i stdin)"
+                            " | sort -k 1,1 -k2,2 -n "
                             "> ~{out-file}")
                (region->bed (:region config) out-file))}))
   ([vcf-file ref-file split-dir work-dir config]
