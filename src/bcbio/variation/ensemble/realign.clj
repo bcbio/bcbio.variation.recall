@@ -75,7 +75,7 @@
                         (map (fn [[sample s-vcfs]]
                                (by-region sample region (map second s-vcfs) (get bam-files sample)
                                           ref-file dirs region-e-dir config))))]
-    (merge/region-merge :bcftools final-vcfs region region-merge-dir out-file)))
+    (merge/region-merge :gatk final-vcfs region ref-file region-merge-dir out-file)))
 
 (defn ensemble-vcfs
   "Combine VCF files with squaring off by recalling at uncalled variant positions."

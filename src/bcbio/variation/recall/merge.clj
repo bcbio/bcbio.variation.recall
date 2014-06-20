@@ -55,9 +55,23 @@
     (when (fs/exists? (str orig-file ext))
       (.renameTo (io/file (str orig-file ext)) (io/file (str new-file ext))))))
 
+(defmethod region-merge :gatk
+  ^{:doc "Merge VCFs in a region using GATK framework"}
+  [_ vcf-files region ref-file work-dir final-file]
+  (let [out-file (region-merge-outfile region work-dir final-file)
+        variant-str (string/join " " (map #(str "--variant " %) vcf-files))]
+    (itx/run-cmd out-file
+                 "gatk-framework -Xms250m -Xmx1g -T CombineVariants -R ~{ref-file} "
+                 "-L ~{(eprep/region->samstr region)} --out ~{out-file} "
+                 "--genotypemergeoption REQUIRE_UNIQUE --logging_level ERROR "
+                 "--suppressCommandLineHeader --setKey null "
+                 "-U LENIENT_VCF_PROCESSING "
+                 "~{variant-str}")
+    (eprep/bgzip-index-vcf out-file)))
+
 (defmethod region-merge :bcftools
   ^{:doc "Merge VCFs within a region using bcftools."}
-  [_ vcf-files region work-dir final-file]
+  [_ vcf-files region ref-file work-dir final-file]
   (let [group-size 5000
         out-file (region-merge-outfile region work-dir final-file)]
     (when (itx/needs-run? out-file)
@@ -74,7 +88,7 @@
 
 (defmethod region-merge :vcflib
   ^{:doc "Merge VCFs within a region using tabix and vcflib"}
-  [_ vcf-files region work-dir final-file]
+  [_ vcf-files region ref-file work-dir final-file]
   (let [out-file (region-merge-outfile region work-dir final-file)]
     (when (itx/needs-run? out-file)
       (itx/with-temp-dir [tmp-dir (fs/parent out-file)]
@@ -131,7 +145,7 @@
   [orig-vcf-files ref-file out-file config]
   (prep-by-region (fn [vcf-files region out-dir]
                     (vcfutils/ensure-no-dup-samples vcf-files)
-                    (region-merge :bcftools vcf-files region out-dir out-file))
+                    (region-merge :gatk vcf-files region ref-file out-dir out-file))
                   orig-vcf-files ref-file out-file config))
 
 (defn- usage [options-summary]

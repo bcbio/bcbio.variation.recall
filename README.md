@@ -83,6 +83,7 @@ your path:
 - [freebayes][freebayes]
 - [glia][glia]
 - [vcflib][vcflib]
+= [GATK MIT licensed framework][gatk-framework]
 - [vt]
 - [bedtools][bedtools]
 - [bcftools (0.20+, with htslib)][bcftools]
@@ -98,6 +99,7 @@ The [bcbio-nextgen][bcbio-nextgen] pipeline installs all this software automatic
 [vcflib]: https://github.com/ekg/vcflib
 [bcftools]: https://github.com/samtools/bcftools
 [freebayes]: https://github.com/ekg/freebayes
+[gatk-framework]: https://github.com/chapmanb/gatk
 [glia]: https://github.com/ekg/glia
 [samtools]: http://samtools.sourceforge.net/
 [platypus]: http://www.well.ox.ac.uk/platypus

@@ -191,7 +191,7 @@
                          (into [])
                          (sort-by first)
                          (map second))]
-    (merge/region-merge :bcftools recall-vcfs region region-merge-dir out-file)))
+    (merge/region-merge :gatk recall-vcfs region ref-file region-merge-dir out-file)))
 
 (defn- sample-to-bam-map*
   "Prepare a map of sample names to BAM files."
