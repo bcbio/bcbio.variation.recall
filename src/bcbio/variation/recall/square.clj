@@ -63,7 +63,8 @@
                  "freebayes -b ~{bam-file} --variant-input ~{vcf-file} --only-use-input-alleles "
                  "--min-repeat-entropy 1 --experimental-gls ~{ploidy-str} "
                  "-f ~{ref-file} -r ~{(eprep/region->freebayes region)} -s ~{sample-file}  | "
-                 "bgzip > ~{out-file}")
+                 "vcffilter -f 'NUMALT > 0' -s | vcfuniqalleles | "
+                 "bgzip -c > ~{out-file}")
     (eprep/bgzip-index-vcf out-file :remove-orig? true)))
 
 (defmulti platypus-filter

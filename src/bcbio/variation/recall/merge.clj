@@ -59,9 +59,9 @@
   ^{:doc "Merge VCFs in a region using GATK framework"}
   [_ vcf-files region ref-file work-dir final-file]
   (let [out-file (region-merge-outfile region work-dir final-file)
-        variant-str (string/join " " (map #(str "--variant " %) vcf-files))]
+        variant-str (string/join " " (map #(str "--variant " (eprep/bgzip-index-vcf %)) vcf-files))]
     (itx/run-cmd out-file
-                 "gatk-framework -Xms250m -Xmx1g -T CombineVariants -R ~{ref-file} "
+                 "gatk-framework -Xms250m -Xmx4g -T CombineVariants -R ~{ref-file} "
                  "-L ~{(eprep/region->samstr region)} --out ~{out-file} "
                  "--genotypemergeoption REQUIRE_UNIQUE --logging_level ERROR "
                  "--suppressCommandLineHeader --setKey null "
