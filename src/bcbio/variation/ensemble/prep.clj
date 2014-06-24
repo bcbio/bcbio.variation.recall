@@ -60,9 +60,28 @@
     (tabix-index-vcf out-file)
     out-file))
 
-(defn create-union
+(defmulti create-union
   "Create a minimal union file with inputs from multiple variant callers in the given region."
-  [vcf-files ref-file region out-dir]
+  (fn [& args]
+    (keyword (first args))))
+
+(defmethod create-union :gatk
+  ^{:doc "Use GATK CombineVariants to merge multiple input files with sites-only output"}
+  [_ vcf-files ref-file region out-dir]
+  (let [out-file (str (io/file out-dir (str "union-" (region->safestr region) ".vcf.gz")))
+        variant-str (string/join " " (map #(str "--variant " (bgzip-index-vcf %)) vcf-files))]
+    (itx/run-cmd out-file
+                 "gatk-framework -Xms250m -Xmx2g -T CombineVariants -R ~{ref-file} "
+                 "-L ~{(region->samstr region)} --out ~{out-file} "
+                 "--minimalVCF --sites_only "
+                 "--suppressCommandLineHeader --setKey null "
+                 "-U LENIENT_VCF_PROCESSING --logging_level ERROR "
+                 "~{variant-str}")
+    (bgzip-index-vcf out-file)))
+
+(defmethod create-union :bcftools
+  ^{:doc "Use bcftools isec and custom awk command to handle merge of multiple files"}
+  [_ vcf-files ref-file region out-dir]
   (let [out-file (str (io/file out-dir (str "union-" (region->safestr region) ".vcf.gz")))
         vcf-files-str (string/join " " vcf-files)
         vcf-header "echo -e '##fileformat=VCFv4.1\\n#CHROM\\tPOS\\tID\\tREF\\tALT\\tQUAL\\tFILTER\\tINFO'"

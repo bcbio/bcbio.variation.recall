@@ -177,7 +177,7 @@
     - For each sample, square off using `sample-by-region`
     - Merge all variant files in the region together."
   [vcf-files bam-files region ref-file dirs out-file config]
-  (let [union-vcf (eprep/create-union vcf-files ref-file region (:union dirs))
+  (let [union-vcf (eprep/create-union :gatk vcf-files ref-file region (:union dirs))
         config (assoc config :ploidy (get-existing-ploidy vcf-files region))
         region-square-dir (fsp/safe-mkdir (io/file (:square dirs) (get region :chrom "nochrom")
                                                    (eprep/region->safestr region)))

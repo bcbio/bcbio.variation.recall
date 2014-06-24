@@ -60,7 +60,7 @@
                                                             sample (eprep/region->safestr region) i)))]
                          (square/subset-sample-region x sample region out-file)))
                          vcf-files)
-        union-vcf (eprep/create-union prep-inputs ref-file region union-dir)]
+        union-vcf (eprep/create-union :gatk prep-inputs ref-file region union-dir)]
     (realign-and-call region union-vcf bam-file ref-file work-dir config)))
 
 (defn by-region-multi
