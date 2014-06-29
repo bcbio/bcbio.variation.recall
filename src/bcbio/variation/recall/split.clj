@@ -71,7 +71,7 @@
                                     split-dir ".bed")
         bp-info (rmap (fn [[v s]] (vcf-breakpoints v s ref-file work-dir split-dir config)) vcf-samples
                       (:cores config))
-        str-bp-beds (string/join " " (map :bed bp-info))]
+        str-bp-beds (string/join " " (filter #(> (fs/size %) 0) (map :bed bp-info)))]
     [(map :vcf bp-info)
      (itx/run-cmd out-file
                   "bedtools multiinter -i ~{str-bp-beds} | "
@@ -87,8 +87,10 @@
         out-file (fsp/add-file-part (fsp/remove-file-part bp-file "splitpoints") "pregions")
         fai-file (gref/fasta-idx ref-file)]
     [vcf-files
-     (itx/run-cmd out-file
-                  "bedtools subtract -a <(~{(fai->bed fai-file (:region config) out-file)}) -b ~{bp-file} | "
-                  "bedtools slop -b ~{pad-size} -g ~{fai-file} -i | "
-                  "bedtools merge -d ~{merge-size} "
-                  "> ~{out-file}")]))
+     (if (> (fs/size bp-file) 0)
+       (itx/run-cmd out-file
+                    "bedtools subtract -a <(~{(fai->bed fai-file (:region config) out-file)}) -b ~{bp-file} | "
+                    "bedtools slop -b ~{pad-size} -g ~{fai-file} -i | "
+                    "bedtools merge -d ~{merge-size} "
+                    "> ~{out-file}")
+       (regional-faibed fai-file (:region config) out-file))]))
