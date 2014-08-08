@@ -52,7 +52,7 @@
                (itx/run-cmd out-file
                             "bedtools subtract "
                             "-a ~{fai-bed-file} "
-                            "-b <(bedtools slop -i ~{sample-vcf} -b 10 -g ~{fai-file}"
+                            "-b <(bedtools slop -header -i ~{sample-vcf} -b 10 -g ~{fai-file}"
                             "     | bedtools merge -d ~{merge-size} -i stdin)"
                             " | sort -k 1,1 -k2,2 -n "
                             "> ~{out-file}")
@@ -91,6 +91,6 @@
        (itx/run-cmd out-file
                     "bedtools subtract -a <(~{(fai->bed fai-file (:region config) out-file)}) -b ~{bp-file} | "
                     "bedtools slop -b ~{pad-size} -g ~{fai-file} -i | "
-                    "bedtools merge -d ~{merge-size} "
+                    "bedtools merge -d ~{merge-size} -i stdin "
                     "> ~{out-file}")
        (regional-faibed fai-file (:region config) out-file))]))
