@@ -61,7 +61,7 @@
   (let [out-file (region-merge-outfile region work-dir final-file)
         variant-str (string/join " " (map #(str "--variant " (eprep/bgzip-index-vcf %)) vcf-files))]
     (itx/run-cmd out-file
-                 "gatk-framework -Xms250m -Xmx5g -T CombineVariants -R ~{ref-file} "
+                 "gatk-framework -Xms250m -Xmx3g -XX:+UseSerialGC -T CombineVariants -R ~{ref-file} "
                  "-L ~{(eprep/region->samstr region)} --out ~{out-file} "
                  "--genotypemergeoption REQUIRE_UNIQUE --logging_level ERROR "
                  "--suppressCommandLineHeader --setKey null "

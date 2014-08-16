@@ -71,7 +71,7 @@
   (let [out-file (str (io/file out-dir (str "union-" (region->safestr region) ".vcf.gz")))
         variant-str (string/join " " (map #(str "--variant " (bgzip-index-vcf %)) vcf-files))]
     (itx/run-cmd out-file
-                 "gatk-framework -Xms250m -Xmx4g -T CombineVariants -R ~{ref-file} "
+                 "gatk-framework -Xms250m -Xmx3g -XX:+UseSerialGC -T CombineVariants -R ~{ref-file} "
                  "-L ~{(region->samstr region)} --out ~{out-file} "
                  "--minimalVCF --sites_only "
                  "--suppressCommandLineHeader --setKey null "
