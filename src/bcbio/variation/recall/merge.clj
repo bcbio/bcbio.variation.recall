@@ -107,12 +107,14 @@
 
 (defn- do-concat
   [vcf-files out-file config]
-  (let [input-list (str (fsp/file-root out-file) "-inputs.txt")
+  (let [input-list (str (fsp/file-root out-file) "-concatinputs.txt")
         bgzip-cmd (if (.endsWith out-file ".gz") "| bgzip -c" "")]
     (when (itx/needs-run? out-file)
       (spit input-list (string/join "\n" (rmap eprep/bgzip-index-vcf vcf-files (:cores config)))))
-    (itx/run-cmd out-file
-                 "vt concat `cat ~{input-list}` ~{bgzip-cmd} > ~{out-file}")))
+    (if (= 1 (count vcf-files))
+      (fs/copy (first vcf-files) out-file)
+      (itx/run-cmd out-file
+                   "vt concat `cat ~{input-list}` ~{bgzip-cmd} > ~{out-file}"))))
 
 (defmethod concatenate-vcfs :bgzip
   [vcf-files out-file config]

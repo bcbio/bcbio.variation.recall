@@ -43,7 +43,7 @@
                    "--hapScoreThreshold 10 --scThreshold 0.99 --filteredReadsFrac 0.9 "
                    "--refFile=~{ref-file} --source=~{union-vcf} --assemble=1 "
                    "--logFileName /dev/null --verbosity=1 --output ~{raw-out-file}")
-      (square/platypus-filter :vcflib raw-out-file))
+      (square/platypus-filter raw-out-file))
     (eprep/bgzip-index-vcf raw-out-file :remove-orig? true)))
 
 (defn by-region

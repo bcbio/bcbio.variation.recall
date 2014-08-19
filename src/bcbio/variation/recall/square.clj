@@ -57,40 +57,31 @@
   ^{:doc "Perform variant recalling at specified positions with FreeBayes."}
   [sample region vcf-file bam-file ref-file out-file config]
   (let [sample-file (str (fsp/file-root out-file) "-samples.txt")
-        ploidy-str (if (:ploidy config) (format "-p %s" (:ploidy config)) "")]
+        ploidy-str (if (:ploidy config) (format "-p %s" (:ploidy config)) "")
+        filters ["NUMALT == 0", "%QUAL < 5", "AF[*] <= 0.5 && DP < 4",
+                 "AF[*] <= 0.5 && DP < 13 && %QUAL < 10","AF[*] > 0.5 && DP < 4 && %QUAL < 50"]
+        filter_str (string/join " | " (map #(format "bcftools filter -e '%s' 2> /dev/null" %) filters))]
     (spit sample-file sample)
     (itx/run-cmd out-file
                  "freebayes -b ~{bam-file} --variant-input ~{vcf-file} --only-use-input-alleles "
                  "--min-repeat-entropy 1 --experimental-gls ~{ploidy-str} "
                  "-f ~{ref-file} -r ~{(eprep/region->freebayes region)} -s ~{sample-file}  | "
-                 "vcffilter -f 'NUMALT > 0' -s | vcfuniqalleles | "
+                 "~{filter_str} | vcfuniqalleles | "
                  "bgzip -c > ~{out-file}")
     (eprep/bgzip-index-vcf out-file :remove-orig? true)))
 
-(defmulti platypus-filter
+(defn platypus-filter
   "Perform post-filtration of platypus variant calls.
    Removes hard Q20 filter and replaces with NA12878/GiaB tuned depth
    and quality based filter. bgzips final output."
-  (fn [approach f]
-    (keyword approach)))
-
-(defmethod platypus-filter :bcftools
-  [_ orig-file]
-  (let [out-file (str orig-file ".gz")]
+  [orig-file]
+  (let [out-file (str orig-file ".gz")
+        filters ["FR[*] <= 0.5 && TC < 4 && %QUAL < 20",
+                 "FR[*] <= 0.5 && TC < 13 && %QUAL < 10",
+                 "FR[*] > 0.5 && TC < 4 && %QUAL < 20"]
+        filter_str (string/join " | " (map #(format "bcftools filter -e '%s' 2> /dev/null" %) filters))]
     (itx/run-cmd out-file
-                 " bcftools filter ~{orig-file} -s LOWDPQUAL -m '+' "
-                 "-e '(((FR<=0.5)&&(TC<4)&&(%QUAL<20))||((TC<13)&&(%QUAL<10)))||((FR>0.5)&&((TC<4)&&(%QUAL<20)))' "
-                 "| sed 's/\\tQ20\\t/\\tPASS\\t/' | bgzip -c > ~{out-file}")))
-
-(defmethod platypus-filter :vcflib
-  [_ orig-file]
-  (let [out-file (str orig-file ".gz")]
-    (itx/run-cmd out-file
-                 "vcffilter ~{orig-file} -t LOWDPQUAL -A "
-                 "--or -f 'FR < 0.55 & TC < 4 & QUAL < 20' -f 'FR < 0.55 & TC < 13 & QUAL < 10' "
-                 "-f 'FR > 0.54 & TC < 4 & QUAL < 20'"
-                 "| sed 's/\\tQ20\\t/\\tPASS\\t/' | sed 's/PASS,LOWDPQUAL/LOWDPQUAL/' "
-                 "| bgzip -c > ~{out-file}")))
+                 "sed 's/\\tQ20\\t/\\tPASS\\t/' ~{orig-file} | ~{filter_str} | bgzip -c > ~{out-file}")))
 
 (defmethod recall-variants :platypus
   ^{:doc "Perform variant recalling at specified positions with Platypus."}
@@ -102,7 +93,7 @@
                    "--hapScoreThreshold 10 --scThreshold 0.99 --filteredReadsFrac 0.9 "
                    "--refFile=~{ref-file} --source=~{vcf-file} --minPosterior=0 --getVariantsFromBAMs=0 "
                    "--logFileName /dev/null --verbosity=1 --output ~{raw-out-file}")
-      (platypus-filter :vcflib raw-out-file))
+      (platypus-filter raw-out-file))
     (eprep/bgzip-index-vcf raw-out-file :remove-orig? true)))
 
 (defn union-variants
