@@ -73,15 +73,19 @@
 (defn platypus-filter
   "Perform post-filtration of platypus variant calls.
    Removes hard Q20 filter and replaces with NA12878/GiaB tuned depth
-   and quality based filter. bgzips final output."
-  [orig-file]
+   and quality based filter.
+   Performs normalization and removal of duplicate alleles.
+   bgzips final output."
+  [orig-file ref-file]
   (let [out-file (str orig-file ".gz")
         filters ["FR[*] <= 0.5 && TC < 4 && %QUAL < 20",
                  "FR[*] <= 0.5 && TC < 13 && %QUAL < 10",
                  "FR[*] > 0.5 && TC < 4 && %QUAL < 20"]
         filter_str (string/join " | " (map #(format "bcftools filter -e '%s' 2> /dev/null" %) filters))]
     (itx/run-cmd out-file
-                 "sed 's/\\tQ20\\t/\\tPASS\\t/' ~{orig-file} | ~{filter_str} | bgzip -c > ~{out-file}")))
+                 "sed 's/\\tQ20\\t/\\tPASS\\t/' ~{orig-file} | "
+                 "vt normalize -r ~{ref-file} -q - 2> /dev/null | vcfuniqalleles | "
+                 "~{filter_str} | bgzip -c > ~{out-file}")))
 
 (defmethod recall-variants :platypus
   ^{:doc "Perform variant recalling at specified positions with Platypus."}
@@ -93,7 +97,7 @@
                    "--hapScoreThreshold 10 --scThreshold 0.99 --filteredReadsFrac 0.9 "
                    "--refFile=~{ref-file} --source=~{vcf-file} --minPosterior=0 --getVariantsFromBAMs=0 "
                    "--logFileName /dev/null --verbosity=1 --output ~{raw-out-file}")
-      (platypus-filter raw-out-file))
+      (platypus-filter raw-out-file ref-file))
     (eprep/bgzip-index-vcf raw-out-file :remove-orig? true)))
 
 (defn union-variants

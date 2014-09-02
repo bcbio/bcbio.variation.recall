@@ -52,9 +52,15 @@
   (let [out-file (str (io/file data-dir "work" "NA12878-10-merge.vcf.gz"))]
     (merge/combine-vcfs [(first vcf-files) merge-vcf-file] ref-file out-file config) => out-file))
 
-(facts "Square off variant calls from multiple samples, creating merged final file."
+(facts "FreeBayes: Square off variant calls from multiple samples, creating merged final file."
   (let [out-file (str (io/file data-dir "work" "NA12878-10-square.vcf.gz"))
         fconfig (assoc config :caller :freebayes)]
+    (square/combine-vcfs [(first vcf-files) merge-vcf-file] [bam-file bam-file]
+                         ref-file out-file fconfig) => out-file))
+
+(facts "Platypus: Square off variant calls from multiple samples, creating merged final file."
+  (let [out-file (str (io/file data-dir "work" "NA12878-10-square.vcf.gz"))
+        fconfig (assoc config :caller :platypus)]
     (square/combine-vcfs [(first vcf-files) merge-vcf-file] [bam-file bam-file]
                          ref-file out-file fconfig) => out-file))
 
