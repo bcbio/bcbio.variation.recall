@@ -59,14 +59,15 @@
   ^{:doc "Merge VCFs in a region using GATK framework"}
   [_ vcf-files region ref-file work-dir final-file]
   (let [out-file (region-merge-outfile region work-dir final-file)
-        variant-str (string/join " " (map #(str "--variant " (eprep/bgzip-index-vcf %)) vcf-files))]
+        input-list (str (fsp/file-root out-file) "-combineinputs.list")]
+    (when (itx/needs-run? out-file)
+      (spit input-list (string/join "\n" (map eprep/bgzip-index-vcf vcf-files))))
     (itx/run-cmd out-file
-                 "gatk-framework -Xms250m -Xmx3g -XX:+UseSerialGC -T CombineVariants -R ~{ref-file} "
+                 "gatk-framework -Xms250m -Xmx4g -XX:+UseSerialGC -T CombineVariants -R ~{ref-file} "
                  "-L ~{(eprep/region->samstr region)} --out ~{out-file} "
                  "--genotypemergeoption REQUIRE_UNIQUE --logging_level ERROR "
                  "--suppressCommandLineHeader --setKey null "
-                 "-U LENIENT_VCF_PROCESSING "
-                 "~{variant-str}")
+                 "-U LENIENT_VCF_PROCESSING -V ~{input-list}")
     (eprep/bgzip-index-vcf out-file)))
 
 (defmethod region-merge :bcftools
@@ -107,14 +108,14 @@
 
 (defn- do-concat
   [vcf-files out-file config]
-  (let [input-list (str (fsp/file-root out-file) "-concatinputs.txt")
+  (let [input-list (str (fsp/file-root out-file) "-concatinputs.list")
         bgzip-cmd (if (.endsWith out-file ".gz") "| bgzip -c" "")]
     (when (itx/needs-run? out-file)
       (spit input-list (string/join "\n" (rmap eprep/bgzip-index-vcf vcf-files (:cores config)))))
     (if (= 1 (count vcf-files))
       (fs/copy (first vcf-files) out-file)
       (itx/run-cmd out-file
-                   "vt concat `cat ~{input-list}` ~{bgzip-cmd} > ~{out-file}"))))
+                   "bcftools concat --allow-overlaps --file-list ~{input-list} ~{bgzip-cmd} > ~{out-file}"))))
 
 (defmethod concatenate-vcfs :bgzip
   [vcf-files out-file config]
