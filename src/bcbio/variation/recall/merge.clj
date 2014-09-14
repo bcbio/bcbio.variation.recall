@@ -173,6 +173,8 @@
   (let [{:keys [options arguments errors summary]}
         (parse-opts args [["-c" "--cores CORES" "Number of cores to use" :default 1
                            :parse-fn #(Integer/parseInt %)]
+                          ["-r" "--region REGION"
+                           "Genomic region to subset, in samtools format (chr1:100-200) or BED file"]
                           ["-h" "--help"]])]
     (cond
      (:help options) (clhelp/exit 0 (usage summary))
