@@ -59,11 +59,15 @@
   ^{:doc "Merge VCFs in a region using GATK framework"}
   [_ vcf-files region ref-file work-dir final-file]
   (let [out-file (region-merge-outfile region work-dir final-file)
-        input-list (str (fsp/file-root out-file) "-combineinputs.list")]
+        input-list (str (fsp/file-root out-file) "-combineinputs.list")
+        max-mem (cond
+                 (< (count vcf-files) 250) "2g"
+                 (< (count vcf-files) 1000) "4g"
+                 :else "6g")]
     (when (itx/needs-run? out-file)
       (spit input-list (string/join "\n" (map eprep/bgzip-index-vcf vcf-files))))
     (itx/run-cmd out-file
-                 "gatk-framework -Xms250m -Xmx4g -XX:+UseSerialGC -T CombineVariants -R ~{ref-file} "
+                 "gatk-framework -Xms250m -Xmx~{max-mem} -XX:+UseSerialGC -T CombineVariants -R ~{ref-file} "
                  "-L ~{(eprep/region->samstr region)} --out ~{out-file} "
                  "--genotypemergeoption REQUIRE_UNIQUE --logging_level ERROR "
                  "--suppressCommandLineHeader --setKey null "
