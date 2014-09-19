@@ -68,47 +68,70 @@
                  "-f ~{ref-file} -r ~{(eprep/region->freebayes region)} -s ~{sample-file}  | "
                  "~{filter_str} | vcfuniqalleles | "
                  "bgzip -c > ~{out-file}")
-    (eprep/bgzip-index-vcf out-file :remove-orig? true)))
+    (eprep/bgzip-index-vcf out-file)))
 
-(defn platypus-filter
-  "Perform post-filtration of platypus variant calls.
-   Removes hard Q20 filter and replaces with NA12878/GiaB tuned depth
-   and quality based filter.
-   Performs normalization and removal of duplicate alleles.
-   bgzips final output."
-  [orig-file ref-file]
-  (let [out-file (str orig-file ".gz")
-        filters ["FR[*] <= 0.5 && TC < 4 && %QUAL < 20",
+(defmethod recall-variants :platypus
+  ^{:doc "Perform variant recalling at specified positions with Platypus.
+          Perform post-filtration of platypus variant calls.
+          Removes hard Q20 filter and replaces with NA12878/GiaB tuned depth
+          and quality based filter.
+          Performs normalization and removal of duplicate alleles.
+          bgzips final output."}
+  [sample region vcf-file bam-file ref-file out-file config]
+  (let [filters ["FR[*] <= 0.5 && TC < 4 && %QUAL < 20",
                  "FR[*] <= 0.5 && TC < 13 && %QUAL < 10",
                  "FR[*] > 0.5 && TC < 4 && %QUAL < 20"]
         filter_str (string/join " | " (map #(format "bcftools filter -e '%s' 2> /dev/null" %) filters))]
     (itx/run-cmd out-file
-                 "sed 's/\\tQ20\\t/\\tPASS\\t/' ~{orig-file} | "
+                 "platypus callVariants --bamFiles=~{bam-file} --regions=~{(eprep/region->samstr region)} "
+                 "--hapScoreThreshold 10 --scThreshold 0.99 --filteredReadsFrac 0.9 "
+                 "--rmsmqThreshold 20 --qdThreshold 0 --abThreshold 0.0 --minVarFreq 0.0 "
+                 "--refFile=~{ref-file} --source=~{vcf-file} --minPosterior=0 --getVariantsFromBAMs=0 "
+                 "--logFileName /dev/null --verbosity=1 --output - "
+                 "sed 's/\\tQ20\\t/\\tPASS\\t/' | "
                  "vt normalize -r ~{ref-file} -q - 2> /dev/null | vcfuniqalleles | "
-                 "~{filter_str} | bgzip -c > ~{out-file}")))
+                 "~{filter_str} | bgzip -c > ~{out-file}")
+    (eprep/bgzip-index-vcf out-file)))
 
-(defmethod recall-variants :platypus
-  ^{:doc "Perform variant recalling at specified positions with Platypus."}
+(defn vcf->bcftools-call-input
+  "Convert a VCF input file into the custom format needed for bcftools call.
+   XXX Not currently used as constrained calling is broken in samtools 1.0 for multiple positions."
+  [vcf-file]
+  (let [out-file (str (fsp/file-root vcf-file) "-callinput.tsv")]
+    (itx/run-cmd out-file
+                 "bcftools query -f '%CHROM\\t%POS\\t%REF,%ALT\\n' ~{vcf-file} > ~{out-file} ")
+    (if false ;; (> (fs/size out-file) 0)
+      (<< "-T ~{out-file} --constrain alleles")
+      "")))
+
+(defmethod recall-variants :samtools
+  ^{:doc "Perform variant recalling at specified positions with samtools.
+          XXX Curently uses normalization instead of constrained calling."}
   [sample region vcf-file bam-file ref-file out-file config]
-  (let [raw-out-file (string/replace out-file ".gz" "")]
-    (when (itx/needs-run? out-file)
-      (itx/run-cmd raw-out-file
-                   "platypus callVariants --bamFiles=~{bam-file} --regions=~{(eprep/region->samstr region)} "
-                   "--hapScoreThreshold 10 --scThreshold 0.99 --filteredReadsFrac 0.9 "
-                   "--refFile=~{ref-file} --source=~{vcf-file} --minPosterior=0 --getVariantsFromBAMs=0 "
-                   "--logFileName /dev/null --verbosity=1 --output ~{raw-out-file}")
-      (platypus-filter raw-out-file ref-file))
-    (eprep/bgzip-index-vcf raw-out-file :remove-orig? true)))
+  (let [filters ["AC[0] / AN <= 0.5 && DP < 4 && %QUAL < 20"
+                 "DP < 13 && %QUAL < 10"
+                 "AC[0] / AN > 0.5 && DP < 4 && %QUAL < 50"]
+        filter_str (string/join " | " (map #(format "bcftools filter -e '%s' 2> /dev/null" %) filters))]
+    (itx/run-cmd out-file
+                 "samtools mpileup -f ~{ref-file} -t DP -u -g -r ~{(eprep/region->samstr region)} "
+                 "-l ~{vcf-file} ~{bam-file} | "
+                 "bcftools call -m ~{(vcf->bcftools-call-input vcf-file)} - | "
+                 "bcftools norm -f ~{ref-file} -m '+both' - | "
+                 "sed 's/,Version=3>/>/' | sed 's/Number=R/Number=./' | "
+                 "~{filter_str} | bgzip -c > ~{out-file}")
+    (eprep/bgzip-index-vcf out-file)))
 
 (defn union-variants
-  "Create a union of VCF variants from two files."
-  [f1 f2 region ref-file out-file]
-  (when (itx/needs-run? out-file)
-    (vcfheader/with-merged [header-file [f1 f2] ref-file out-file]
-      (itx/run-cmd out-file
-                   "cat <(grep ^## ~{header-file}) <(vcfcombine ~{f1} ~{f2} | grep -v ^##) | "
-                   "bgzip -c > ~{out-file}")))
-  (eprep/bgzip-index-vcf out-file :remove-orig? true))
+  "Use GATK CombineVariants to merge multiple input files"
+  [vcf-files ref-file region out-file]
+  (let [variant-str (string/join " " (map #(str "--variant " (eprep/bgzip-index-vcf %)) vcf-files))]
+    (itx/run-cmd out-file
+                 "gatk-framework -Xms250m -Xmx2g -XX:+UseSerialGC -T CombineVariants -R ~{ref-file} "
+                 "-L ~{(eprep/region->samstr region)} --out ~{out-file} "
+                 "--suppressCommandLineHeader --setKey null "
+                 "-U LENIENT_VCF_PROCESSING --logging_level ERROR "
+                 "~{variant-str}")
+    (eprep/bgzip-index-vcf out-file)))
 
 (defn- sample-by-region
   "Square off a specific sample in a genomic region, given all possible variants.
@@ -127,7 +150,7 @@
           (intersect-variants (:region fnames) union-vcf ref-file (:existing fnames))
           (unique-variants union-vcf (:region fnames) ref-file (:needcall fnames))
           (recall-variants sample region (:needcall fnames) region-bam-file ref-file (:recall fnames) config)
-          (union-variants (:recall fnames) (:existing fnames) region ref-file out-file))))
+          (union-variants [(:recall fnames) (:existing fnames)] ref-file region out-file))))
     out-file))
 
 (defn- sample-by-region-prep
@@ -257,7 +280,7 @@
        (string/join \newline)))
 
 (defn -main [& args]
-  (let [caller-opts #{:freebayes :platypus}
+  (let [caller-opts #{:freebayes :platypus :samtools}
         {:keys [options arguments errors summary]}
         (parse-opts args [["-c" "--cores CORES" "Number of cores to use" :default 1
                            :parse-fn #(Integer/parseInt %)]

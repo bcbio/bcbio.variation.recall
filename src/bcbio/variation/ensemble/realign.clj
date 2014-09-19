@@ -36,15 +36,21 @@
   ^{:doc "Perform realignment and recalling with platypus"}
   [region union-vcf bam-file ref-file work-dir config]
   (let [out-file (str (io/file work-dir (str "recall-" (eprep/region->safestr region) ".vcf.gz")))
-        raw-out-file (string/replace out-file ".gz" "")]
+        filters ["FR[*] <= 0.5 && TC < 4 && %QUAL < 20",
+                 "FR[*] <= 0.5 && TC < 13 && %QUAL < 10",
+                 "FR[*] > 0.5 && TC < 4 && %QUAL < 20"]
+        filter_str (string/join " | " (map #(format "bcftools filter -e '%s' 2> /dev/null" %) filters))]
     (when (itx/needs-run? out-file)
-      (itx/run-cmd raw-out-file
+      (itx/run-cmd out-file
                    "platypus callVariants --bamFiles=~{bam-file} --regions=~{(eprep/region->samstr region)} "
                    "--hapScoreThreshold 10 --scThreshold 0.99 --filteredReadsFrac 0.9 "
+                   "--rmsmqThreshold 20 --qdThreshold 0 --abThreshold 0.00001 --minVarFreq 0.0 "
                    "--refFile=~{ref-file} --source=~{union-vcf} --assemble=1 "
-                   "--logFileName /dev/null --verbosity=1 --output ~{raw-out-file}")
-      (square/platypus-filter raw-out-file ref-file))
-    (eprep/bgzip-index-vcf raw-out-file :remove-orig? true)))
+                   "--logFileName /dev/null --verbosity=1 --output - "
+                   "sed 's/\\tQ20\\t/\\tPASS\\t/' | "
+                   "vt normalize -r ~{ref-file} -q - 2> /dev/null | vcfuniqalleles | "
+                   "~{filter_str} | bgzip -c > ~{out-file}"))
+    (eprep/bgzip-index-vcf out-file :remove-orig? true)))
 
 (defn by-region
   "Realign and recall variants in a defined genomic region."

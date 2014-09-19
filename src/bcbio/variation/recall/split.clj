@@ -71,12 +71,15 @@
                                     split-dir ".bed")
         bp-info (rmap (fn [[v s]] (vcf-breakpoints v s ref-file work-dir split-dir config)) vcf-samples
                       (:cores config))
-        str-bp-beds (string/join " " (filter #(> (fs/size %) 0) (map :bed bp-info)))]
+        str-bp-beds (when (every? #(> (fs/size %) 0) (map :bed bp-info))
+                          (string/join " " (map :bed bp-info)))]
     [(map :vcf bp-info)
-     (itx/run-cmd out-file
-                  "bedtools multiinter -i ~{str-bp-beds} | "
-                  "awk -F $'\\t' '{OFS=FS} $4 >= ~{(count bp-info)} {print $1,$2,$3}' "
-                  "> ~{out-file}")]))
+     (if str-bp-beds
+       (itx/run-cmd out-file
+                    "bedtools multiinter -i ~{str-bp-beds} | "
+                    "awk -F $'\\t' '{OFS=FS} $4 >= ~{(count bp-info)} {print $1,$2,$3}' "
+                    "> ~{out-file}")
+       out-file)]))
 
 (defn group-pregions
   "Provide BED file of common analysis regions across all VCFs for parallel analysis.
@@ -87,7 +90,7 @@
         out-file (fsp/add-file-part (fsp/remove-file-part bp-file "splitpoints") "pregions")
         fai-file (gref/fasta-idx ref-file)]
     [vcf-files
-     (if (> (fs/size bp-file) 0)
+     (if (and (fs/exists? bp-file) (> (fs/size bp-file) 0))
        (itx/run-cmd out-file
                     "bedtools subtract -a <(~{(fai->bed fai-file (:region config) out-file)}) -b ~{bp-file} | "
                     "bedtools slop -b ~{pad-size} -g ~{fai-file} -i | "

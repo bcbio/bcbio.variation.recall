@@ -64,6 +64,12 @@
     (square/combine-vcfs [(first vcf-files) merge-vcf-file] [bam-file bam-file]
                          ref-file out-file fconfig) => out-file))
 
+(facts "samtools: Square off variant calls from multiple samples, creating merged final file."
+  (let [out-file (str (io/file data-dir "work" "NA12878-10-square.vcf.gz"))
+        fconfig (assoc config :caller :samtools)]
+    (square/combine-vcfs [(first vcf-files) merge-vcf-file] [bam-file bam-file]
+                         ref-file out-file fconfig) => out-file))
+
 (facts "Squaring off with CRAM input files"
   (let [out-file (str (io/file data-dir "work" "NA12878-10-square.vcf.gz"))
         fconfig (-> config
