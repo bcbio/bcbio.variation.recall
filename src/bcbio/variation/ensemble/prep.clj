@@ -60,6 +60,15 @@
     (tabix-index-vcf out-file)
     out-file))
 
+(defn gatk-mem
+  "Simple calculation of GATK memory requirements based on input samples."
+  [xs]
+  (cond (< (count xs) 10) "1g"
+        (< (count xs) 250) "2g"
+        (< (count xs) 500) "4g"
+        (< (count xs) 1000) "6g"
+        :else "8g"))
+
 (defmulti create-union
   "Create a minimal union file with inputs from multiple variant callers in the given region."
   (fn [& args]
@@ -71,7 +80,8 @@
   (let [out-file (str (io/file out-dir (str "union-" (region->safestr region) ".vcf.gz")))
         variant-str (string/join " " (map #(str "--variant " (bgzip-index-vcf %)) vcf-files))]
     (itx/run-cmd out-file
-                 "gatk-framework -Xms250m -Xmx3g -XX:+UseSerialGC -T CombineVariants -R ~{ref-file} "
+                 "gatk-framework -Xms250m -Xmx~{(gatk-mem vcf-files)} -XX:+UseSerialGC "
+                 "-T CombineVariants -R ~{ref-file} "
                  "-L ~{(region->samstr region)} --out ~{out-file} "
                  "--minimalVCF --sites_only "
                  "--suppressCommandLineHeader --setKey null "

@@ -126,7 +126,8 @@
   [vcf-files ref-file region out-file]
   (let [variant-str (string/join " " (map #(str "--variant " (eprep/bgzip-index-vcf %)) vcf-files))]
     (itx/run-cmd out-file
-                 "gatk-framework -Xms250m -Xmx2g -XX:+UseSerialGC -T CombineVariants -R ~{ref-file} "
+                 "gatk-framework -Xms250m -Xmx~{(eprep/gatk-mem vcf-files)} -XX:+UseSerialGC "
+                 "-T CombineVariants -R ~{ref-file} "
                  "-L ~{(eprep/region->samstr region)} --out ~{out-file} "
                  "--suppressCommandLineHeader --setKey null "
                  "-U LENIENT_VCF_PROCESSING --logging_level ERROR "

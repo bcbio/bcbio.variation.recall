@@ -1,4 +1,4 @@
-(defproject bcbio.variation.recall "0.0.1-SNAPSHOT"
+(defproject bcbio.variation.recall "0.0.1"
   :description "Parallel merging, squaring off and ensemble calling for genomic variants."
   :url "https://github.com/chapmanb/bcbio.variation.recall"
   :license {:name "MIT" :url "http://www.opensource.org/licenses/mit-license.html"}
