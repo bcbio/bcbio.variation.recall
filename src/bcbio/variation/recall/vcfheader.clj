@@ -2,12 +2,11 @@
   "Create VCF headers using algorithms contained in Picard/Tribble tools.
    This does the best job of cleanly merging and organizing headers from
    multiple variant calling approaches."
-  (:import [net.sf.picard.reference ReferenceSequenceFileFactory]
-           [net.sf.picard.sam CreateSequenceDictionary]
-           [org.broad.tribble AbstractFeatureReader]
-           [org.broadinstitute.variant.vcf VCFCodec VCFUtils VCFHeader]
-           [org.broadinstitute.variant.variantcontext.writer VariantContextWriterFactory
-            Options])
+  (:import [htsjdk.samtools.reference ReferenceSequenceFileFactory]
+           [picard.sam CreateSequenceDictionary]
+           [htsjdk.tribble AbstractFeatureReader]
+           [htsjdk.variant.vcf VCFCodec VCFUtils VCFHeader]
+           [htsjdk.variant.variantcontext.writer VariantContextWriterFactory Options])
   (:require [clojure.java.io :as io]
             [bcbio.run.fsp :as fsp]
             [bcbio.run.itx :as itx]))

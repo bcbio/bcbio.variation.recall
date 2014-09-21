@@ -1,6 +1,6 @@
 (ns bcbio.align.bam
   "Manipulate BAM files, using the Picard samtools API"
-  (:import [net.sf.samtools SAMFileReader SAMFileReader$ValidationStringency])
+  (:import [htsjdk.samtools SAMFileReader SAMFileReader$ValidationStringency])
   (:require [bcbio.run.itx :as itx]
             [clojure.java.io :as io]))
 
