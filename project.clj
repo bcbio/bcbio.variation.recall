@@ -6,6 +6,7 @@
                  [org.clojure/tools.cli "0.3.0"]
                  [ordered "1.3.2"]
                  [version-clj "0.1.0"]
+                 [de.kotka/lazymap "3.1.1"]
                  [bcbio.run "0.0.1-SNAPSHOT"]
                  [org.clojars.chapmanb/picard "1.112"]
                  [org.clojars.chapmanb/htsjdk "1.112"]]

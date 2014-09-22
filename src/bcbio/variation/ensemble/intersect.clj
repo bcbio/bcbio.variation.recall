@@ -5,6 +5,7 @@
             [bcbio.run.parallel :refer [rmap]]
             [bcbio.variation.ensemble.prep :as eprep]
             [bcbio.variation.recall.clhelp :as clhelp]
+            [bcbio.variation.variantcontext :as vc]
             [clojure.tools.cli :refer [parse-opts]]
             [clojure.string :as string]
             [me.raynes.fs :as fs]))
@@ -23,6 +24,7 @@
   (fsp/safe-mkdir (fs/parent out-file))
   (let [vcf-files (rmap eprep/bgzip-index-vcf orig-vcf-files (:cores options))
         isec-file (intersect-vcfs vcf-files out-file options)]
+    ;(vc/write-vcf-w-template (first orig-vcf-files) :header-update-fn (vc/merge-headers orig-vcf-files))
     (println isec-file)
     out-file))
 
