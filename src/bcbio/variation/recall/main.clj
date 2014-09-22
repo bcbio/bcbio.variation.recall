@@ -1,7 +1,7 @@
 (ns bcbio.variation.recall.main
   (:require [bcbio.variation.recall.merge]
             [bcbio.variation.recall.square]
-            [bcbio.variation.ensemble.realign]
+            [bcbio.variation.ensemble.intersect]
             [clojure.java.io :as io]
             [taoensso.timbre :as timbre])
   (:gen-class))
@@ -22,7 +22,7 @@
    :square {:main bcbio.variation.recall.square/-main
             :doc (str "Perform squaring off for a set of called VCF files, recalling at no-call "
                       "positions in each sample.")}
-   :ensemble {:main bcbio.variation.ensemble.realign/-main
+   :ensemble {:main bcbio.variation.ensemble.intersect/-main
               :doc "Perform ensemble calling given multiple VCF callers for a single sample."}
    :version {:main version
              :doc "Print version"}})

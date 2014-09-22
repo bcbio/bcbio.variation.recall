@@ -2,6 +2,7 @@
   "Tests for ensemble variant consolidation with local realignment."
   (:require [bcbio.variation.ensemble.prep :as eprep]
             [bcbio.variation.ensemble.realign :as erealign]
+            [bcbio.variation.ensemble.intersect :as eintersect]
             [bcbio.variation.recall.merge :as merge]
             [bcbio.variation.recall.split :as rsplit]
             [bcbio.variation.recall.square :as square]
@@ -43,6 +44,11 @@
 (facts "Calculate ensemble set of variants from multiple inputs using realignment over entire region."
   (let [out-file (str (io/file work-dir "NA12878-2-ensemble.vcf.gz"))]
     (erealign/ensemble-vcfs vcf-files [bam-file] ref-file out-file config) => out-file))
+
+(facts "Calculate ensemble set of variants using intersection and n out of x counting."
+  (let [out-file (str (io/file work-dir "NA12878-2-ensemble.vcf.gz"))
+        econfig (assoc config :numpass 2)]
+    (eintersect/ensemble-vcfs vcf-files ref-file out-file config) => out-file))
 
 (facts "Identify split breakpoints for parallel execution"
   (let [out-file (str (io/file data-dir "work" "split" "NA12878-10-freebayes-combo-3-pregions.bed"))]
