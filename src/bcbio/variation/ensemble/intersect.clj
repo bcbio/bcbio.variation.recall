@@ -6,27 +6,64 @@
             [bcbio.variation.ensemble.prep :as eprep]
             [bcbio.variation.recall.clhelp :as clhelp]
             [bcbio.variation.variantcontext :as vc]
+            [clojure.java.io :as io]
             [clojure.tools.cli :refer [parse-opts]]
             [clojure.string :as string]
             [me.raynes.fs :as fs]))
 
 (defn- intersect-vcfs
-  [vcf-files base-file options]
-  (let [out-file (str (fsp/file-root base-file) "-intersect.txt")
+  [vcf-files work-dir base-file options]
+  (let [out-file (str (fsp/add-file-part base-file, "intersect" work-dir ".txt"))
         vcf-file-str (string/join " " vcf-files)
         numpass (get options :numpass 2)]
     (itx/run-cmd out-file
                  "bcftools isec -n '+~{numpass}' -o ~{out-file} ~{vcf-file-str}")))
 
+(defn- parse-isec-line
+  "Convert a line from bcftools isec into coordinates and the file to retrieve."
+  [line]
+  (let [[chrom str-start refa alta intersects] (string/split line #"\t")
+        start (dec (Integer/parseInt str-start))]
+    {:chr chrom :start start :refa refa :alta (string/split alta #",")
+     :end (->> (cons refa (string/split alta #","))
+              (map count)
+              (apply max)
+              (+ start))
+     :vc-index (->> intersects
+                    (map-indexed (fn [i x] (when (= \1 x) i)))
+                    (remove nil?)
+                    first)}))
+
+(defn- get-rep-vc
+  "Retrieve the best representative variant context for a passing ensemble variant."
+  [vc-getter vcf-files]
+  (fn [line]
+    (let [rep-file (nth vcf-files (:vc-index line))
+          rep-vcs (->> (vc/variants-in-region vc-getter line)
+                       (filter #(= rep-file (:fname %)))
+                       (filter #(= (:refa line) (.getDisplayString (:ref-allele %))))
+                       (filter #(= (:alta line) (map (fn [x] (.getDisplayString x)) (:alt-alleles %)))))]
+      (println line)
+      (if (= 1 (count rep-vcs))
+        (-> rep-vcs first :vc vc/remove-filter)
+        (throw (Exception. (format "Problem retrieving reference variant for %s" line)))))))
+
 (defn ensemble-vcfs
   "Calculate ensemble calls using intersection counting from a set of input VCFs"
   [orig-vcf-files ref-file out-file options]
   (fsp/safe-mkdir (fs/parent out-file))
-  (let [vcf-files (rmap eprep/bgzip-index-vcf orig-vcf-files (:cores options))
-        isec-file (intersect-vcfs vcf-files out-file options)]
-    ;(vc/write-vcf-w-template (first orig-vcf-files) :header-update-fn (vc/merge-headers orig-vcf-files))
-    (println isec-file)
-    out-file))
+  (when (itx/needs-run? out-file)
+    (let [vcf-files (rmap eprep/bgzip-index-vcf orig-vcf-files (:cores options))
+          work-dir (fsp/safe-mkdir (str (fsp/file-root out-file) "-work"))
+          isec-file (intersect-vcfs vcf-files work-dir out-file options)]
+      (with-open [rdr (io/reader isec-file)
+                  vc-getter (apply vc/get-vcf-retriever (cons ref-file vcf-files))]
+        (vc/write-vcf-w-template (first vcf-files) {:out out-file}
+                                 (map (comp (get-rep-vc vc-getter vcf-files) parse-isec-line) (line-seq rdr))
+                                 :header-update-fn (apply vc/merge-headers vcf-files)))
+      (eprep/bgzip-index-vcf out-file)
+      (fsp/remove-path work-dir)))
+  out-file)
 
 (defn- usage [options-summary]
   (->> ["Ensemble calling for samples: combine multiple VCF caller outputs into a single callset."

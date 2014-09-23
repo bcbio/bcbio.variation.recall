@@ -7,7 +7,7 @@
             VCFCodec VCFUtils VCFHeader VCFFilterHeaderLine]
            [htsjdk.variant.variantcontext VariantContextBuilder
             GenotypeBuilder GenotypesContext]
-           [htsjdk.variant.variantcontext.writer VariantContextWriterFactory
+           [htsjdk.variant.variantcontext.writer VariantContextWriterBuilder
             Options]
            [picard.sam CreateSequenceDictionary]
            [java.util EnumSet])
@@ -150,18 +150,20 @@
    file handles represented as keywords. This allows lazy splitting of VCF files:
    `vc-iter` is a lazy sequence of `(writer-keyword variant-context)`.
    `out-file-map` is a map of writer-keywords to output filenames."
-  [tmpl-file out-file-map vc-iter ref & {:keys [header-update-fn]}]
-  (letfn [(make-vcf-writer [f ref]
-            (VariantContextWriterFactory/create (io/file f) (get-seq-dict ref)
-                                                (EnumSet/of Options/INDEX_ON_THE_FLY
-                                                            Options/ALLOW_MISSING_FIELDS_IN_HEADER)))
+  [tmpl-file out-file-map vc-iter & {:keys [header-update-fn]}]
+  (letfn [(make-vcf-writer [f]
+            (-> (VariantContextWriterBuilder. )
+                (.setOutputFile f)
+                (.setOption Options/INDEX_ON_THE_FLY)
+                (.setOption Options/ALLOW_MISSING_FIELDS_IN_HEADER)
+                .build))
           (convert-to-output [info]
             [(if (and (coll? info) (= 2 (count info))) (first info) :out)
              (if (coll? info) (last info) info)])]
-    (itx/with-tx-files [tx-out-files out-file-map (keys out-file-map) [".idx"]]
+    (itx/with-tx-files [tx-out-files out-file-map (keys out-file-map) [".idx" ".tbi"]]
       (let [tmpl-header (get-vcf-header tmpl-file)
             writer-map (zipmap (keys tx-out-files)
-                               (map #(make-vcf-writer % ref) (vals tx-out-files)))]
+                               (map make-vcf-writer (vals tx-out-files)))]
         (doseq [[key out-vcf] writer-map]
           (.writeHeader out-vcf (if-not (nil? header-update-fn)
                                   (header-update-fn key tmpl-header)
@@ -172,3 +174,10 @@
               (.add (get writer-map fkey) ready-vc))))
         (doseq [x (vals writer-map)]
           (.close x))))))
+
+;; ## Utilities
+
+(defn remove-filter
+  "Remove filter from a variant context."
+  [vc]
+  (-> (VariantContextBuilder. vc) .passFilters .make))
