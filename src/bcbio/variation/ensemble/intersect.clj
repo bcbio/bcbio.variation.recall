@@ -13,7 +13,7 @@
 
 (defn- intersect-vcfs
   [vcf-files work-dir base-file options]
-  (let [out-file (str (fsp/add-file-part base-file, "intersect" work-dir ".txt"))
+  (let [out-file (str (fsp/add-file-part base-file "intersect" work-dir ".txt"))
         vcf-file-str (string/join " " vcf-files)
         numpass (get options :numpass 2)]
     (itx/run-cmd out-file
@@ -43,18 +43,31 @@
                        (filter #(= rep-file (:fname %)))
                        (filter #(= (:refa line) (.getDisplayString (:ref-allele %))))
                        (filter #(= (:alta line) (map (fn [x] (.getDisplayString x)) (:alt-alleles %)))))]
-      (println line)
       (if (= 1 (count rep-vcs))
         (-> rep-vcs first :vc vc/remove-filter)
         (throw (Exception. (format "Problem retrieving reference variant for %s" line)))))))
+
+(defn- maybe-nofiltered
+  "Potentially remove filtered variants from inputs into Ensemble calling.
+   Enables inputs to Ensemble calling to use all variants or only
+   those that pass an initial filtration step."
+  [vcf-file work-dir options]
+  (let [out-file (fsp/add-file-part vcf-file "nofilter" work-dir)]
+    (if (:nofiltered options)
+      (do
+        (itx/run-cmd out-file
+                     "bcftools view -f 'PASS,.' ~{vcf-file} -O z -o ~{out-file}")
+        (eprep/bgzip-index-vcf out-file))
+      vcf-file)))
 
 (defn ensemble-vcfs
   "Calculate ensemble calls using intersection counting from a set of input VCFs"
   [orig-vcf-files ref-file out-file options]
   (fsp/safe-mkdir (fs/parent out-file))
   (when (itx/needs-run? out-file)
-    (let [vcf-files (rmap eprep/bgzip-index-vcf orig-vcf-files (:cores options))
+    (let [bg-vcf-files (rmap eprep/bgzip-index-vcf orig-vcf-files (:cores options))
           work-dir (fsp/safe-mkdir (str (fsp/file-root out-file) "-work"))
+          vcf-files (rmap #(maybe-nofiltered % work-dir options) bg-vcf-files)
           isec-file (intersect-vcfs vcf-files work-dir out-file options)]
       (with-open [rdr (io/reader isec-file)
                   vc-getter (apply vc/get-vcf-retriever (cons ref-file vcf-files))]
@@ -62,7 +75,8 @@
                                  (map (comp (get-rep-vc vc-getter vcf-files) parse-isec-line) (line-seq rdr))
                                  :header-update-fn (apply vc/merge-headers vcf-files)))
       (eprep/bgzip-index-vcf out-file)
-      (fsp/remove-path work-dir)))
+      ;(fsp/remove-path work-dir)
+      ))
   out-file)
 
 (defn- usage [options-summary]
@@ -72,10 +86,10 @@
         ""
         "   out-file:   VCF (or bgzipped VCF) file to write merged output to"
         "   ref-file:   FASTA format genome reference file"
-        "  <remaining>: VCF files to include for building a final ensemble callset. "
-        "               Specify on the command line or as text files containing paths to files "
-        "               for processing. Variants are extracted for the final file in order supplied. "
-        "               VCFs can be single or multi-sample. "
+        "  <remaining>: VCF files to include for building a final ensemble callset."
+        "               Specify on the command line or as text files containing paths to files"
+        "               for processing. VCFs can be single or multi-sample."
+        "               The input order of VCFs determines extraction preference in the final ensemble output."
         ""
         "Options:"
         options-summary]
@@ -85,8 +99,9 @@
   (let [{:keys [options arguments errors summary]}
         (parse-opts args [["-c" "--cores CORES" "Number of cores to use" :default 1
                            :parse-fn #(Integer/parseInt %)]
-                          ["-n", "--numpass NUMPASS" "Number of callers a variant should be present in to pass"
+                          ["-n" "--numpass NUMPASS" "Number of callers a variant should be present in to pass"
                            :default 2 :parse-fn #(Integer/parseInt %)]
+                          [nil "--nofiltered" "Remove filtered variants before performing ensemble calls"]
                           ["-h" "--help"]])]
     (cond
      (:help options) (clhelp/exit 0 (usage summary))
