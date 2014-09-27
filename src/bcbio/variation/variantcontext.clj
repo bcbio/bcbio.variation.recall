@@ -137,6 +137,11 @@
   (with-open [vcf-reader (AbstractFeatureReader/getFeatureReader vcf-file (VCFCodec.) false)]
     (.getHeader vcf-reader)))
 
+(defn get-vcf-samples
+  "Retrieve samples from a VCF header"
+  [vcf-file]
+  (map str (.getGenotypeSamples (get-vcf-header vcf-file))))
+
 (defn merge-headers
   [& merge-files]
   (fn [_ header]

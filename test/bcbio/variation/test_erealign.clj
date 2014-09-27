@@ -3,9 +3,11 @@
   (:require [bcbio.variation.ensemble.prep :as eprep]
             [bcbio.variation.ensemble.realign :as erealign]
             [bcbio.variation.ensemble.intersect :as eintersect]
+            [bcbio.variation.ensemble.vcfsample :as vcfsample]
             [bcbio.variation.recall.merge :as merge]
             [bcbio.variation.recall.split :as rsplit]
             [bcbio.variation.recall.square :as square]
+            [me.raynes.fs :as fs]
             [midje.sweet :refer :all]
             [clojure.java.io :as io]
             [bcbio.run.fsp :as fsp]
@@ -85,3 +87,9 @@
                     )]
     (square/combine-vcfs [(first vcf-files) merge-vcf-file] [cram-file cram-file]
                          ref-file out-file fconfig) => out-file))
+
+(facts "Test sorting VCF samples to be consistent"
+  (let [in-dir (io/file data-dir "cancer")
+        vcf-files (map #(str (io/file in-dir (format "c-tumor-%s.vcf.gz" %)))
+                       ["freebayes" "mutect" "vardict" "varscan"])]
+    (count (vcfsample/consistent-order vcf-files work-dir)) => 4))
