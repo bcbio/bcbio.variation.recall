@@ -90,6 +90,6 @@
 
 (facts "Test sorting VCF samples to be consistent"
   (let [in-dir (io/file data-dir "cancer")
-        vcf-files (map #(str (io/file in-dir (format "c-tumor-%s.vcf.gz" %)))
+        vcf-files (map #(str (io/file in-dir % "c-tumor.vcf.gz"))
                        ["freebayes" "mutect" "vardict" "varscan"])]
     (count (vcfsample/consistent-order vcf-files work-dir)) => 4))

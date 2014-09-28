@@ -52,8 +52,8 @@
   "Potentially remove filtered variants from inputs into Ensemble calling.
    Enables inputs to Ensemble calling to use all variants or only
    those that pass an initial filtration step."
-  [vcf-file work-dir options]
-  (let [out-file (fsp/add-file-part vcf-file "nofilter" work-dir)]
+  [vcf-file all-files work-dir options]
+  (let [out-file (vcfsample/unique-work-file vcf-file "nofilter" all-files work-dir)]
     (if (:nofiltered options)
       (do
         (itx/run-cmd out-file
@@ -68,7 +68,8 @@
   (when (itx/needs-run? out-file)
     (let [bg-vcf-files (rmap eprep/bgzip-index-vcf orig-vcf-files (:cores options))
           work-dir (fsp/safe-mkdir (str (fsp/file-root out-file) "-work"))
-          vcf-files (vcfsample/consistent-order (rmap #(maybe-nofiltered % work-dir options) bg-vcf-files)
+          vcf-files (vcfsample/consistent-order (rmap #(maybe-nofiltered % bg-vcf-files work-dir options)
+                                                      bg-vcf-files)
                                                 work-dir)
           isec-file (intersect-vcfs vcf-files work-dir out-file options)]
       (with-open [rdr (io/reader isec-file)
@@ -84,13 +85,13 @@
 (defn- usage [options-summary]
   (->> ["Ensemble calling for samples: combine multiple VCF caller outputs into a single callset."
         ""
-        "Usage: bcbio-variation-recall ensemble [options] out-file ref-file [<vcf-files, bam-files, or list-files>]"
+        "Usage: bcbio-variation-recall ensemble [options] out-file ref-file [<vcf-files or list-files>]"
         ""
         "   out-file:   VCF (or bgzipped VCF) file to write merged output to"
         "   ref-file:   FASTA format genome reference file"
         "  <remaining>: VCF files to include for building a final ensemble callset."
-        "               Specify on the command line or as text files containing paths to files"
-        "               for processing. VCFs can be single or multi-sample."
+        "               Specify on the command line or as text files containing paths to files."
+        "               VCFs can be single or multi-sample."
         "               The input order of VCFs determines extraction preference in the final ensemble output."
         ""
         "Options:"
