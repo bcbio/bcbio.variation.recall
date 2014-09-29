@@ -1,5 +1,7 @@
-## 0.0.2 (in progress)
+## 0.0.2 (29 September 2014)
 
+- Initial implementation of intersection based ensemble calling. Handle
+  germline and tumor/normal cases.
 - Use new picard and htsjdk libraries for variant manipulation.
 
 ## 0.0.1 (20 September 2014)

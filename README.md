@@ -9,6 +9,9 @@ independent processing of smaller regions with variant calls. Handles:
 - Merging multiple samples, called independently, into a single final VCF file.
 - Squaring off multiple samples, called independently, by recalling at all
   identified genomic positions.
+- Ensemble calling for samples called with multiple variant callers. Uses an
+  intersection based approach, selecting variants present in at least `n` callers,
+  where you choose `n`.
 
 This is a work in progress.
 
@@ -56,6 +59,25 @@ requires [leiningen].
       -r, --region REGION             Genomic region to subset, in samtools format (chr1:100-200) or BED file
       -h, --help
 
+### Ensemble
+
+    Ensemble calling for samples: combine multiple VCF caller outputs into a single callset.
+
+    Usage: bcbio-variation-recall ensemble [options] out-file ref-file [<vcf-files or list-files>]
+
+       out-file:   VCF (or bgzipped VCF) file to write merged output to
+       ref-file:   FASTA format genome reference file
+      <remaining>: VCF files to include for building a final ensemble callset.
+                   Specify on the command line or as text files containing paths to files.
+                   VCFs can be single or multi-sample.
+                   The input order of VCFs determines extraction preference in the final ensemble output.
+
+    Options:
+      -c, --cores CORES      1  Number of cores to use
+      -n, --numpass NUMPASS  2  Number of callers a variant should be present in to pass
+          --nofiltered          Remove filtered variants before performing ensemble calls
+      -h, --help
+
 ## Thank you
 
 External software provides the underlying algorithms. This tool is a framework
@@ -68,8 +90,8 @@ your path:
 - [GATK MIT licensed framework][gatk-framework]
 - [vt]
 - [bedtools][bedtools]
-- [bcftools (0.20+, with htslib)][bcftools]
-- [samtools][samtools]
+- [bcftools 1.x][bcftools]
+- [samtools 1.x][samtools]
 - [sambamba]
 - [platypus]
 - [scramble and cram_index, from staden io_lib][scramble]
