@@ -42,6 +42,7 @@
     (let [rep-file (nth vcf-files (:vc-index line))
           rep-vcs (->> (vc/variants-in-region vc-getter line)
                        (filter #(= rep-file (:fname %)))
+                       (filter #(= (:start line) (dec (:start %))))
                        (filter #(= (:refa line) (.getDisplayString (:ref-allele %))))
                        (filter #(= (:alta line) (map (fn [x] (.getDisplayString x)) (:alt-alleles %)))))]
       (if (= 1 (count rep-vcs))
