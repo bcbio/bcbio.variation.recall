@@ -1,3 +1,11 @@
+## 0.0.3 (26 October 2014)
+
+- Fix FreeBayes recalling/squaring off to better distinguish reference and no
+  call. Avoid filtering low-quality reference positions and assigning as no
+  call while still removing problem variants.
+- Fix ensemble calling for cases with closely spaced variants containing
+  identical ref/alts.
+
 ## 0.0.2 (29 September 2014)
 
 - Initial implementation of intersection based ensemble calling. Handle

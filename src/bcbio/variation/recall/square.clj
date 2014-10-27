@@ -60,13 +60,15 @@
         ploidy-str (if (:ploidy config) (format "-p %s" (:ploidy config)) "")
         filters ["NUMALT == 0", "%QUAL < 5", "AF[*] <= 0.5 && DP < 4",
                  "AF[*] <= 0.5 && DP < 13 && %QUAL < 10","AF[*] > 0.5 && DP < 4 && %QUAL < 50"]
-        filter_str (string/join " | " (map #(format "bcftools filter -e '%s' 2> /dev/null" %) filters))]
+        nosupport-filter "bcftools filter -S . -e 'AC == 0 && DP < 4' 2> /dev/null"
+        filter_str (string/join " | " (map #(format "bcftools filter -S 0 -e 'AC > 0 && %s' 2> /dev/null" %)
+                                           filters))]
     (spit sample-file sample)
     (itx/run-cmd out-file
                  "freebayes -b ~{bam-file} --variant-input ~{vcf-file} --only-use-input-alleles "
                  "--min-repeat-entropy 1 --experimental-gls ~{ploidy-str} "
                  "-f ~{ref-file} -r ~{(eprep/region->freebayes region)} -s ~{sample-file}  | "
-                 "~{filter_str} | vcfuniqalleles | "
+                 "~{filter_str} | vcffixup | ~{nosupport-filter} | "
                  "bgzip -c > ~{out-file}")
     (eprep/bgzip-index-vcf out-file)))
 
