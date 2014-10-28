@@ -54,7 +54,12 @@
     (keyword (get (last args) :caller :freebayes))))
 
 (defmethod recall-variants :freebayes
-  ^{:doc "Perform variant recalling at specified positions with FreeBayes."}
+  ^{:doc "Perform variant recalling at specified positions with FreeBayes.
+          Cleans up FreeBayes calling:
+           - Converts non-passing low quality variants to reference calls.
+           - Reporting calls as no-call if they do not have at least a depth of 4
+           - Ceil FreeBayes qualities at 1 to avoid errors when feeding to GATK downstream.
+           - Remove duplicate alternative alleles."}
   [sample region vcf-file bam-file ref-file out-file config]
   (let [sample-file (str (fsp/file-root out-file) "-samples.txt")
         ploidy-str (if (:ploidy config) (format "-p %s" (:ploidy config)) "")
@@ -68,7 +73,8 @@
                  "freebayes -b ~{bam-file} --variant-input ~{vcf-file} --only-use-input-alleles "
                  "--min-repeat-entropy 1 --experimental-gls ~{ploidy-str} "
                  "-f ~{ref-file} -r ~{(eprep/region->freebayes region)} -s ~{sample-file}  | "
-                 "~{filter_str} | vcffixup | ~{nosupport-filter} | "
+                 "vcfuniqalleles | ~{filter_str} | vcffixup | ~{nosupport-filter} | "
+                 "awk -F$'\\t' -v OFS='\\t' '{if ($0 !~ /^#/ && $6 < 1) $6 = 1 } {print}' | "
                  "bgzip -c > ~{out-file}")
     (eprep/bgzip-index-vcf out-file)))
 

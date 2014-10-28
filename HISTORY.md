@@ -1,3 +1,8 @@
+## 0.0.4 (28 October 2014)
+
+- FreeBayes recalling fixes to support GATK compatibility: remove
+  duplicate alternative alleles and ceil very low FreeBayes quality scores.
+
 ## 0.0.3 (26 October 2014)
 
 - Fix FreeBayes recalling/squaring off to better distinguish reference and no
