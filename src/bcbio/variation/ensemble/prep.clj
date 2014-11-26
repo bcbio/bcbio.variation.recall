@@ -63,8 +63,7 @@
 (defn gatk-mem
   "Simple calculation of GATK memory requirements based on input samples."
   [xs]
-  (cond (< (count xs) 10) "1g"
-        (< (count xs) 250) "2g"
+  (cond (< (count xs) 250) "2g"
         (< (count xs) 500) "4g"
         (< (count xs) 1000) "6g"
         :else "8g"))

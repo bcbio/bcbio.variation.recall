@@ -19,7 +19,7 @@
               full-cram-file (str (fs/file cram-file))
               tmp-dir (str (fs/parent tx-cram-index))]
           (itx/check-run (<< "ln -s ~{full-cram-file} ~{tx-cram-file}"))
-          (itx/check-run (<< "cram_index ~{tx-cram-file}")))))
+          (itx/check-run (<< "samtools index ~{tx-cram-file}")))))
     cram-index))
 
 (defn sample-names
@@ -35,5 +35,5 @@
                     (string/split #"\t")
                     first)]
       (itx/run-cmd bam-file
-                   "scramble -I cram -O bam -R ~{chrom}:1-1 ~{cram-file} ~{bam-file}")
+                   "samtools view -b -H ~{cram-file) > ~{bam-file}")
       (bam/sample-names bam-file))))

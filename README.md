@@ -94,7 +94,7 @@ your path:
 - [samtools 1.x][samtools]
 - [sambamba]
 - [platypus]
-- [scramble and cram_index, from staden io_lib][scramble]
+- [scramble, from staden io_lib][scramble]
 
 The [bcbio-nextgen][bcbio-nextgen] pipeline installs all this software automatically.
 
