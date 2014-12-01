@@ -45,9 +45,10 @@
                        (filter #(= (:start line) (dec (:start %))))
                        (filter #(= (:refa line) (.getDisplayString (:ref-allele %))))
                        (filter #(= (:alta line) (map (fn [x] (.getDisplayString x)) (:alt-alleles %)))))]
-      (if (= 1 (count rep-vcs))
+      (if (> (count rep-vcs) 0)
         (-> rep-vcs first :vc vc/remove-filter)
-        (throw (Exception. (format "Problem retrieving reference variant for %s" line)))))))
+        (throw (Exception. (format "Problem retrieving reference variant for %s: %s" line
+                                   (vec (map #(select-keys % [:chr :start :fname]) rep-vcs)))))))))
 
 (defn- maybe-nofiltered
   "Potentially remove filtered variants from inputs into Ensemble calling.
