@@ -1,3 +1,12 @@
+## 0.0.6 (in progress)
+
+- Correctly handle identically named input files for recalling.
+- Avoid filtering low quality reference calls when recalling with Platypus.
+
+## 0.0.5 (1 December 2014)
+
+- Ensemble calling: handle variant inputs with multiple identical calls.
+
 ## 0.0.4 (28 October 2014)
 
 - FreeBayes recalling fixes to support GATK compatibility: remove

@@ -90,16 +90,17 @@
   (let [filters ["FR[*] <= 0.5 && TC < 4 && %QUAL < 20",
                  "FR[*] <= 0.5 && TC < 13 && %QUAL < 10",
                  "FR[*] > 0.5 && TC < 4 && %QUAL < 20"]
-        filter_str (string/join " | " (map #(format "bcftools filter -e '%s' 2> /dev/null" %) filters))]
+        nosupport-filter "bcftools filter -S . -e 'TR == 0 && TC < 4' 2> /dev/null"
+        filter_str (string/join " | " (map #(format "bcftools filter -S 0 -e 'TR > 0 && %s' 2> /dev/null" %) filters))]
     (itx/run-cmd out-file
                  "platypus callVariants --bamFiles=~{bam-file} --regions=~{(eprep/region->samstr region)} "
                  "--hapScoreThreshold 10 --scThreshold 0.99 --filteredReadsFrac 0.9 "
                  "--rmsmqThreshold 20 --qdThreshold 0 --abThreshold 0.0 --minVarFreq 0.0 "
                  "--refFile=~{ref-file} --source=~{vcf-file} --minPosterior=0 --getVariantsFromBAMs=0 "
-                 "--logFileName /dev/null --verbosity=1 --output - "
-                 "sed 's/\\tQ20\\t/\\tPASS\\t/' | "
+                 "--logFileName /dev/null --verbosity=1 --output - | "
+                 "awk -F$'\\t' -v OFS='\\t' '{if ($0 !~ /^#/) $7 = \"PASS\" } {print}' | "
                  "vt normalize -r ~{ref-file} -q - 2> /dev/null | vcfuniqalleles | "
-                 "~{filter_str} | bgzip -c > ~{out-file}")
+                 "~{filter_str} | vcffixup | ~{nosupport-filter} | bgzip -c > ~{out-file}")
     (eprep/bgzip-index-vcf out-file)))
 
 (defn vcf->bcftools-call-input
