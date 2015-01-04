@@ -55,7 +55,7 @@
    Enables inputs to Ensemble calling to use all variants or only
    those that pass an initial filtration step."
   [vcf-file all-files work-dir options]
-  (let [out-file (vcfsample/unique-work-file vcf-file "nofilter" all-files work-dir)]
+  (let [out-file (eprep/unique-work-file vcf-file "nofilter" all-files work-dir)]
     (if (:nofiltered options)
       (do
         (itx/run-cmd out-file

@@ -30,22 +30,10 @@
               (assoc coll i (get want-indexes x)))
             {} (map-indexed vector orig-order))))
 
-(defn unique-work-file
-  "Create a work file with unique name in case of shared base names."
-  [orig-file ext all-files work-dir]
-  (let [cmp-files (remove #(= % orig-file) all-files)
-        parts (reverse (string/split orig-file #"/"))
-        unique-file (loop [i 1]
-                      (let [cur-name (string/join "-" (reverse (take i parts)))]
-                        (if (not-any? #(.endsWith % cur-name) cmp-files)
-                          cur-name
-                          (recur (inc i)))))]
-    (fsp/add-file-part unique-file ext work-dir)))
-
 (defn- sort-samples
   "Sort samples in a VCF file, moving from orig-order to want-order."
   [vcf-file orig-order want-order all-vcfs work-dir]
-  (let [out-file (unique-work-file vcf-file "ssort" all-vcfs work-dir)
+  (let [out-file (eprep/unique-work-file vcf-file "ssort" all-vcfs work-dir)
         sample-reorder (calculate-reorder orig-order want-order)]
     (with-open [rdr (io/reader (BlockCompressedInputStream. (io/file vcf-file)))
                 wtr (io/writer (BlockCompressedOutputStream. (io/file out-file)))]

@@ -19,7 +19,9 @@
   [vcf-file]
   (with-open [rdr (pog-reader vcf-file)]
     (let [line (first (drop-while #(not (.startsWith % "#CHROM")) (line-seq rdr)))]
-      (vec (drop 9 (string/split (string/trimr line) #"\t"))))))
+      (if line
+        (vec (drop 9 (string/split (string/trimr line) #"\t")))
+        (throw (Exception. (format "Did not find #CHROM line in input VCF file %s" vcf-file)))))))
 
 (defn get-sample
   "Retrieve VCF sample name from a single sample input file."

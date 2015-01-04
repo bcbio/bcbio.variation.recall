@@ -130,8 +130,8 @@
   "General functionality to split a set of VCFs into regions and apply a function, in parallel, to each."
   [f orig-vcf-files ref-file out-file config]
   (let [in-dir (fsp/safe-mkdir (io/file (fs/parent out-file) "inprep"))
-        bg-vcf-files (rmap #(eprep/bgzip-index-vcf % :remove-nopass? true :dir in-dir) orig-vcf-files
-                           (:cores config))
+        bg-vcf-files (rmap #(eprep/bgzip-index-vcf % :remove-nopass? true :dir in-dir :orig-files orig-vcf-files)
+                           orig-vcf-files (:cores config))
         merge-dir (fsp/safe-mkdir (io/file (fs/parent out-file) "merge"))
         [vcf-files region-bed] (rsplit/group-pregions bg-vcf-files ref-file merge-dir config)
         merge-parts (->> (rmap (fn [region]

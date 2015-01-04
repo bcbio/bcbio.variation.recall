@@ -8,6 +8,18 @@
             [clojure.string :as string]
             [me.raynes.fs :as fs]))
 
+(defn unique-work-file
+  "Create a work file with unique name in case of shared base names."
+  [orig-file ext all-files work-dir]
+  (let [cmp-files (remove #(= % orig-file) all-files)
+        parts (reverse (string/split orig-file #"/"))
+        unique-file (loop [i 1]
+                      (let [cur-name (string/join "-" (reverse (take i parts)))]
+                        (if (not-any? #(.endsWith % cur-name) cmp-files)
+                          cur-name
+                          (recur (inc i)))))]
+    (fsp/add-file-part unique-file ext work-dir)))
+
 (defn- tabix-index-vcf
   "Tabix index input VCF inside a transactional directory."
   [bgzip-file]
@@ -23,8 +35,11 @@
 
 (defn bgzip-index-vcf
   "Prepare a VCF file for positional query with bgzip and tabix indexing."
-  [vcf-file & {:keys [remove-orig? remove-nopass? dir]}]
-  (let [out-orig (str (fsp/file-root vcf-file)
+  [vcf-file & {:keys [remove-orig? remove-nopass? dir orig-files]}]
+  (let [out-orig (str (fsp/file-root
+                       (if orig-files
+                         (unique-work-file vcf-file "qprep" orig-files nil)
+                         vcf-file))
                       (if remove-nopass? "-passonly" "")
                       ".vcf.gz")
         out-file (if dir (str (io/file dir (fs/base-name out-orig))) out-orig)]
