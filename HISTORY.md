@@ -2,6 +2,7 @@
 
 - Correctly handle identically named input files for recalling.
 - Avoid filtering low quality reference calls when recalling with Platypus.
+- Correctly support vcffixup stdin in recent vcflib.
 
 ## 0.0.5 (1 December 2014)
 

@@ -74,7 +74,7 @@
                  "--min-repeat-entropy 1 --experimental-gls ~{ploidy-str} "
                  "--use-best-n-alleles 4 --min-mapping-quality 20 "
                  "-f ~{ref-file} -r ~{(eprep/region->freebayes region)} -s ~{sample-file}  | "
-                 "vcfuniqalleles | ~{filter_str} | vcffixup | ~{nosupport-filter} | "
+                 "vcfuniqalleles | ~{filter_str} | vcffixup - | ~{nosupport-filter} | "
                  "awk -F$'\\t' -v OFS='\\t' '{if ($0 !~ /^#/ && $6 < 1) $6 = 1 } {print}' | "
                  "bgzip -c > ~{out-file}")
     (eprep/bgzip-index-vcf out-file)))
@@ -100,7 +100,7 @@
                  "--logFileName /dev/null --verbosity=1 --output - | "
                  "awk -F$'\\t' -v OFS='\\t' '{if ($0 !~ /^#/) $7 = \"PASS\" } {print}' | "
                  "vt normalize -r ~{ref-file} -q - 2> /dev/null | vcfuniqalleles | "
-                 "~{filter_str} | vcffixup | ~{nosupport-filter} | bgzip -c > ~{out-file}")
+                 "~{filter_str} | vcffixup - | ~{nosupport-filter} | bgzip -c > ~{out-file}")
     (eprep/bgzip-index-vcf out-file)))
 
 (defn vcf->bcftools-call-input
