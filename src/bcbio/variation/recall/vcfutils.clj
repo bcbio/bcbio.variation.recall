@@ -63,7 +63,7 @@
   "Convert a region specification to a bcftools option, handling chr1:1-100 and BED files"
   [region]
   (cond
-   (and (fs/file? region) (fs/exists? region)) (str "-R " region)
+   (and region (fs/file? region) (fs/exists? region)) (str "-R " region)
    region (str "-r " region)
    :else ""))
 
