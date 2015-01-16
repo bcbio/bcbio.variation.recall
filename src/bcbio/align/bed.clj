@@ -28,7 +28,7 @@
   "High level bed reader that splits lines into chrom/start/end map"
   [bed-file]
   (r/fold (r/monoid (fn [coll [i line]]
-                      (let [[chrom start end] (take 3 (string/split line #"\t"))]
+                      (let [[chrom start end] (take 3 (string/split (string/trimr line) #"\t"))]
                         (cons {:chrom chrom :start (Integer/parseInt start) :end (Integer/parseInt end)
                                 :i i}
                               coll)))
