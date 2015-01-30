@@ -1,8 +1,9 @@
-## 0.0.6 (in progress)
+## 0.0.6 (30 January 2015)
 
 - Correctly handle identically named input files for recalling.
 - Avoid filtering low quality reference calls when recalling with Platypus.
 - Correctly support vcffixup stdin in recent vcflib.
+- Support new sambamba index changes.
 
 ## 0.0.5 (1 December 2014)
 
