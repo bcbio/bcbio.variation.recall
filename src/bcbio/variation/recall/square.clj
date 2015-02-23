@@ -240,7 +240,8 @@
                                       cache-dir ".edn")]
     (if (itx/needs-run? cache-file)
       (let [bam-map (sample-to-bam-map* bam-files ref-file)]
-        (spit cache-file (pr-str bam-map))
+        (itx/with-tx-file [tx-cache-file cache-file]
+          (spit tx-cache-file (pr-str bam-map)))
         (sample-to-bam-map bam-files ref-file cache-dir))
       (read-string (slurp cache-file)))))
 

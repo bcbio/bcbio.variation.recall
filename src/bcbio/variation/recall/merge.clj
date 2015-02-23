@@ -114,7 +114,8 @@
     (when (itx/needs-run? out-file)
       (spit input-list (string/join "\n" (rmap eprep/bgzip-index-vcf vcf-files (:cores config)))))
     (if (= 1 (count vcf-files))
-      (fs/copy (first vcf-files) out-file)
+      (itx/with-tx-file [tx-out-file out-file]
+        (fs/copy (first vcf-files) tx-out-file))
       (itx/run-cmd out-file
                    "bcftools concat --allow-overlaps --file-list ~{input-list} ~{bgzip-cmd} > ~{out-file}"))))
 

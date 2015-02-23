@@ -1,3 +1,8 @@
+## 0.0.7 (23 February 2015)
+
+- Fix errors encountered on large runs, adding additional temporary directory
+  usage during copy and spit commands to prevent partial files.
+
 ## 0.0.6 (30 January 2015)
 
 - Correctly handle identically named input files for recalling.
