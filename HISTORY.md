@@ -1,3 +1,7 @@
+## 0.0.8 (20 March 2015)
+
+- Avoid copy errors when merging recalls with only a single region.
+
 ## 0.0.7 (23 February 2015)
 
 - Fix errors encountered on large runs, adding additional temporary directory
