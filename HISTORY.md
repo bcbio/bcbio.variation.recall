@@ -1,3 +1,7 @@
+## 0.0.9 (2 April 2015)
+
+- FreeBayes: update with options for latest validated version 0.9.21-7
+
 ## 0.0.8 (20 March 2015)
 
 - Avoid copy errors when merging recalls with only a single region.

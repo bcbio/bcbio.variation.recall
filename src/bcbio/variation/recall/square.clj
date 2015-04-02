@@ -71,7 +71,7 @@
     (spit sample-file sample)
     (itx/run-cmd out-file
                  "freebayes -b ~{bam-file} --variant-input ~{vcf-file} --only-use-input-alleles "
-                 "--min-repeat-entropy 1 --experimental-gls ~{ploidy-str} "
+                 "--min-repeat-entropy 1 ~{ploidy-str} "
                  "--use-best-n-alleles 4 --min-mapping-quality 20 "
                  "-f ~{ref-file} -r ~{(eprep/region->freebayes region)} -s ~{sample-file}  | "
                  "vcfuniqalleles | ~{filter_str} | vcffixup - | ~{nosupport-filter} | "
