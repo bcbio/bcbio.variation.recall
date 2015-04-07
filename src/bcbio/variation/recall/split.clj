@@ -28,7 +28,7 @@
   [fai-file region base-file]
   (let [region-file (region->bed region (fsp/add-file-part base-file "inputregion" nil ".bed"))]
     (str (<< "cut -f 1-2 ~{fai-file} | awk -F $'\\t' '{OFS=FS} {print $1,0,$2}'")
-         (if region-file (<< " | bedtools intersect -a stdin -b ~{region-file} | sort -k1,1 -k2,2 -n") ""))))
+         (if region-file (<< " | bedtools intersect -a stdin -b ~{region-file} | sort -k1,1 -k2,2n") ""))))
 
 (defn- regional-faibed
   "Convert a full genome fai file into the current genome region in BED format."
@@ -54,7 +54,7 @@
                             "-a ~{fai-bed-file} "
                             "-b <(bedtools slop -header -i ~{sample-vcf} -b 10 -g ~{fai-file}"
                             "     | bedtools merge -d ~{merge-size} -i stdin)"
-                            " | sort -k 1,1 -k2,2 -n "
+                            " | sort -k1,1 -k2,2n "
                             "> ~{out-file}")
                (region->bed (:region config) out-file))}))
   ([vcf-file ref-file split-dir work-dir config]

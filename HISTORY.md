@@ -1,3 +1,10 @@
+## 0.1.0 (7 April 2015)
+
+- Fix command line sorting issues with X/Y chromosomes. Thanks to Lorena
+  Pantano.
+- Separate command line help library into bcbio.run for use outside of
+  bcbio.variation.recall.
+
 ## 0.0.9 (2 April 2015)
 
 - FreeBayes: update with options for latest validated version 0.9.21-7

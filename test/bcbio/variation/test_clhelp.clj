@@ -1,6 +1,6 @@
 (ns bcbio.variation.test-clhelp
   "Test support functionality for writing useful command lines."
-  (:require [bcbio.variation.recall.clhelp :as clhelp]
+  (:require [bcbio.run.clhelp :as clhelp]
             [midje.sweet :refer :all]
             [clojure.java.io :as io]))
 

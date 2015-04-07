@@ -2,10 +2,10 @@
   "Intersection based Ensemble calling approaches using inputs from multiple callers."
   (:require [bcbio.run.fsp :as fsp]
             [bcbio.run.itx :as itx]
+            [bcbio.run.clhelp :as clhelp]
             [bcbio.run.parallel :refer [rmap]]
             [bcbio.variation.ensemble.prep :as eprep]
             [bcbio.variation.ensemble.vcfsample :as vcfsample]
-            [bcbio.variation.recall.clhelp :as clhelp]
             [bcbio.variation.variantcontext :as vc]
             [clojure.java.io :as io]
             [clojure.tools.cli :refer [parse-opts]]

@@ -2,10 +2,10 @@
   "Merge multiple VCF files together, running in parallel over genomic regions."
   (:require [bcbio.run.fsp :as fsp]
             [bcbio.run.itx :as itx]
+            [bcbio.run.clhelp :as clhelp]
             [bcbio.run.parallel :refer [rmap]]
             [bcbio.align.bed :as bed]
             [bcbio.variation.ensemble.prep :as eprep]
-            [bcbio.variation.recall.clhelp :as clhelp]
             [bcbio.variation.recall.split :as rsplit]
             [bcbio.variation.recall.vcfutils :as vcfutils]
             [clojure.core.reducers :as r]
