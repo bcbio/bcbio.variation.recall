@@ -38,7 +38,7 @@
   (let [out-file (fsp/add-file-part base-file (format "%s-%s" (eprep/region->safestr region) i) out-dir)
         input-list (str (fsp/file-root out-file) "inputs.txt")]
     (if (= 1 (count vcf-files))
-      (io/copy (io/file (first vcf-files)) (io/file out-file))
+      (itx/safe-copy (io/file (first vcf-files)) (io/file out-file))
       (do
         (when (itx/needs-run? out-file)
           (spit input-list (string/join "\n" (map eprep/bgzip-index-vcf vcf-files))))
@@ -114,10 +114,7 @@
     (when (itx/needs-run? out-file)
       (spit input-list (string/join "\n" (rmap eprep/bgzip-index-vcf vcf-files (:cores config)))))
     (if (= 1 (count vcf-files))
-      (do
-        (itx/with-tx-file [tx-out-file out-file]
-          (fs/copy (first vcf-files) tx-out-file))
-        out-file)
+      (itx/safe-copy (first vcf-files) out-file)
       (itx/run-cmd out-file
                    "bcftools concat --allow-overlaps --file-list ~{input-list} ~{bgzip-cmd} > ~{out-file}"))))
 

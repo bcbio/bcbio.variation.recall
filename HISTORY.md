@@ -1,3 +1,8 @@
+## 0.1.1 (15 April 2015)
+
+- Correctly intersect files when one of the inputs is empty. Thanks to Daryl
+  Waggott.
+
 ## 0.1.0 (7 April 2015)
 
 - Fix command line sorting issues with X/Y chromosomes. Thanks to Lorena

@@ -19,7 +19,7 @@
   [region out-file]
   (when region
     (if (fs/file? region)
-      (io/copy (io/file region) (io/file out-file))
+      (itx/safe-copy (io/file region) (io/file out-file))
       (spit out-file (str (string/join "\t" (string/split region #"[:-]")) "\n")))
     out-file))
 

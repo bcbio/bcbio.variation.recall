@@ -35,17 +35,23 @@
 (defn- intersect-variants
   "Retrieve VCF variants present in both in-file and cmp-file."
   [in-file cmp-file ref-file out-file]
-  (itx/run-cmd out-file
-               "vcfintersect -r ~{ref-file} -i ~{cmp-file} ~{in-file} | "
-               "bgzip > ~{out-file}")
+  (cond
+    (not (vcfutils/has-variants? in-file)) (itx/safe-copy in-file out-file)
+    (not (vcfutils/has-variants? cmp-file)) (itx/safe-copy cmp-file out-file)
+    :else (itx/run-cmd out-file
+                       "vcfintersect -r ~{ref-file} -i ~{cmp-file} ~{in-file} | "
+                       "bgzip > ~{out-file}"))
   (eprep/bgzip-index-vcf out-file :remove-orig? true))
 
 (defn- unique-variants
   "Retrieve variants from in-file not present in cmp-file."
   [in-file cmp-file ref-file out-file]
-  (itx/run-cmd out-file
-               "vcfintersect -v -r ~{ref-file} -i ~{cmp-file} ~{in-file} | "
-               "bgzip > ~{out-file}")
+  (cond
+    (not (vcfutils/has-variants? in-file)) (itx/safe-copy in-file out-file)
+    (not (vcfutils/has-variants? cmp-file)) (itx/safe-copy in-file out-file)
+    :else (itx/run-cmd out-file
+                       "vcfintersect -v -r ~{ref-file} -i ~{cmp-file} ~{in-file} | "
+                       "bgzip > ~{out-file}"))
   (eprep/bgzip-index-vcf out-file :remove-orig? true))
 
 (defmulti recall-variants
