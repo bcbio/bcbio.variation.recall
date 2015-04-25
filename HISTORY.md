@@ -1,3 +1,7 @@
+## 0.1.2 (25 April 2015)
+
+- Correctly handle copies of single files in transactional directories.
+
 ## 0.1.1 (15 April 2015)
 
 - Correctly intersect files when one of the inputs is empty. Thanks to Daryl
