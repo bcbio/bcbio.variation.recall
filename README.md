@@ -52,6 +52,7 @@ requires [leiningen].
                    on the command line or as text files containing paths to files
                    for processing. VCFs can be single or multi-sample and BAM/CRAMs can be in
                    any order but each VCF sample must have an associated BAM/CRAM file to recall.
+                   The sample names in the VCF file must match read groups in the BAM files.
 
     Options:
       -c, --cores CORES    1          Number of cores to use
