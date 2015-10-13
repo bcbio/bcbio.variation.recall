@@ -98,6 +98,7 @@
                  "-T CombineVariants -R ~{ref-file} "
                  "-L ~{(region->samstr region)} --out ~{out-file} "
                  "--minimalVCF --sites_only "
+                 "--genotypemergeoption UNSORTED "
                  "--suppressCommandLineHeader --setKey null "
                  "-U LENIENT_VCF_PROCESSING --logging_level ERROR "
                  "~{variant-str}")

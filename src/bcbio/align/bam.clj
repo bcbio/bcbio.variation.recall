@@ -1,6 +1,6 @@
 (ns bcbio.align.bam
   "Manipulate BAM files, using the Picard samtools API"
-  (:import [htsjdk.samtools SAMFileReader SAMFileReader$ValidationStringency])
+  (:import [htsjdk.samtools SAMFileReader ValidationStringency])
   (:require [bcbio.run.fsp :as fsp]
             [bcbio.run.itx :as itx]
             [clojure.core.strint :refer [<<]]
@@ -21,6 +21,6 @@
 (defn sample-names
   "Retrieve samples represented in the BAM file."
   [bam-file]
-  (SAMFileReader/setDefaultValidationStringency SAMFileReader$ValidationStringency/LENIENT)
+  (SAMFileReader/setDefaultValidationStringency ValidationStringency/LENIENT)
   (with-open [in-bam (SAMFileReader. (io/file bam-file))]
     (set (map #(.getSample %) (-> in-bam .getFileHeader .getReadGroups)))))

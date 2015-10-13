@@ -1,3 +1,8 @@
+## 0.1.3 (13 October 2015)
+
+- Support latest GATK and htsjdk to handle issues with gVCFs on GATK 3.4 and
+  different command line options in gatk-framework.
+
 ## 0.1.2 (25 April 2015)
 
 - Correctly handle copies of single files in transactional directories.
