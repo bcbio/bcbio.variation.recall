@@ -76,7 +76,8 @@ requires [leiningen].
     Options:
       -c, --cores CORES      1  Number of cores to use
       -n, --numpass NUMPASS  2  Number of callers a variant should be present in to pass
-          --nofiltered          Remove filtered variants before performing ensemble calls
+           --names NAMES        Comma separated list of names corresponding to VCFs, for annotating output
+           --nofiltered         Remove filtered variants before performing ensemble calls
       -h, --help
 
 ## Thank you

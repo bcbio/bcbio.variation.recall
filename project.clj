@@ -1,8 +1,8 @@
-(defproject bcbio.variation.recall "0.1.3"
+(defproject bcbio.variation.recall "0.1.4"
   :description "Parallel merging, squaring off and ensemble calling for genomic variants."
   :url "https://github.com/chapmanb/bcbio.variation.recall"
   :license {:name "MIT" :url "http://www.opensource.org/licenses/mit-license.html"}
-  :dependencies [[org.clojure/clojure "1.6.0"]
+  :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.clojure/tools.cli "0.3.0"]
                  [ordered "1.3.2"]
                  [version-clj "0.1.0"]

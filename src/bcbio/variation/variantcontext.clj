@@ -142,6 +142,19 @@
   [vcf-file]
   (map str (.getGenotypeSamples (get-vcf-header vcf-file))))
 
+(defn vc-add-attr
+  "Add an attribute to the current VariantContext"
+  [vc key val]
+  (-> (VariantContextBuilder. vc)
+      (.attributes (assoc (into {} (.getAttributes vc)) key val))
+      .make))
+
+(defn- header-w-md
+  "Update a header with new INFO and FILTER metadata."
+  [new-md header]
+  (VCFHeader. (apply ordered-set (concat (.getMetaDataInInputOrder header) new-md))
+              (.getGenotypeSamples header)))
+
 (defn merge-headers
   [& merge-files]
   (fn [_ header]
@@ -155,7 +168,7 @@
    file handles represented as keywords. This allows lazy splitting of VCF files:
    `vc-iter` is a lazy sequence of `(writer-keyword variant-context)`.
    `out-file-map` is a map of writer-keywords to output filenames."
-  [tmpl-file out-file-map vc-iter & {:keys [header-update-fn]}]
+  [tmpl-file out-file-map vc-iter & {:keys [header-update-fn new-md]}]
   (letfn [(make-vcf-writer [f]
             (-> (VariantContextWriterBuilder. )
                 (.setOutputFile f)
@@ -170,9 +183,9 @@
             writer-map (zipmap (keys tx-out-files)
                                (map make-vcf-writer (vals tx-out-files)))]
         (doseq [[key out-vcf] writer-map]
-          (.writeHeader out-vcf (if-not (nil? header-update-fn)
-                                  (header-update-fn key tmpl-header)
-                                  tmpl-header)))
+          (.writeHeader out-vcf (cond->> tmpl-header
+                                  header-update-fn (header-update-fn key)
+                                  new-md (header-w-md new-md))))
         (doseq [[fkey item] (map convert-to-output vc-iter)]
           (let [ready-vc (if (and (map? item) (contains? item :vc)) (:vc item) item)]
             (when-not (nil? ready-vc)

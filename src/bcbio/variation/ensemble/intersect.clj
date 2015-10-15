@@ -1,5 +1,6 @@
 (ns bcbio.variation.ensemble.intersect
   "Intersection based Ensemble calling approaches using inputs from multiple callers."
+  (:import  [htsjdk.variant.vcf VCFInfoHeaderLine VCFHeaderLineType VCFHeaderLineCount])
   (:require [bcbio.run.fsp :as fsp]
             [bcbio.run.itx :as itx]
             [bcbio.run.clhelp :as clhelp]
@@ -30,23 +31,30 @@
               (map count)
               (apply max)
               (+ start))
-     :vc-index (->> intersects
-                    (map-indexed (fn [i x] (when (= \1 x) i)))
-                    (remove nil?)
-                    first)}))
+     :vc-indices (->> intersects
+                      (map-indexed (fn [i x] (when (= \1 x) i)))
+                      (remove nil?))}))
+
+(defn- ann-vc-w-names
+  "Annotate a variant context with information contributing caller names."
+  [context names]
+  (if names
+    (vc/vc-add-attr context "CALLERS" (string/join "," names))
+    context))
 
 (defn- get-rep-vc
   "Retrieve the best representative variant context for a passing ensemble variant."
-  [vc-getter vcf-files]
+  [vc-getter vcf-files names]
   (fn [line]
-    (let [rep-file (nth vcf-files (:vc-index line))
+    (let [rep-file (nth vcf-files (first (:vc-indices line)))
           rep-vcs (->> (vc/variants-in-region vc-getter line)
                        (filter #(= rep-file (:fname %)))
                        (filter #(= (:start line) (dec (:start %))))
                        (filter #(= (:refa line) (.getDisplayString (:ref-allele %))))
-                       (filter #(= (:alta line) (map (fn [x] (.getDisplayString x)) (:alt-alleles %)))))]
+                       (filter #(= (:alta line) (map (fn [x] (.getDisplayString x)) (:alt-alleles %)))))
+          cur-names (when (seq names) (map (partial nth names) (:vc-indices line)))]
       (if (> (count rep-vcs) 0)
-        (-> rep-vcs first :vc vc/remove-filter)
+        (-> rep-vcs first :vc vc/remove-filter (ann-vc-w-names cur-names))
         (throw (Exception. (format "Problem retrieving reference variant for %s: %s" line
                                    (vec (map #(select-keys % [:chr :start :fname]) rep-vcs)))))))))
 
@@ -77,8 +85,12 @@
       (with-open [rdr (io/reader isec-file)
                   vc-getter (apply vc/get-vcf-retriever (cons ref-file vcf-files))]
         (vc/write-vcf-w-template (first vcf-files) {:out out-file}
-                                 (map (comp (get-rep-vc vc-getter vcf-files) parse-isec-line) (line-seq rdr))
-                                 :header-update-fn (apply vc/merge-headers vcf-files)))
+                                 (map (comp (get-rep-vc vc-getter vcf-files (:names options)) parse-isec-line)
+                                      (line-seq rdr))
+                                 :header-update-fn (apply vc/merge-headers vcf-files)
+                                 :new-md #{(VCFInfoHeaderLine. "CALLERS" VCFHeaderLineCount/UNBOUNDED
+                                                               VCFHeaderLineType/String
+                                                               "Individual caller support")}))
       (eprep/bgzip-index-vcf out-file)
       ;(fsp/remove-path work-dir)
       ))
@@ -106,6 +118,9 @@
                            :parse-fn #(Integer/parseInt %)]
                           ["-n" "--numpass NUMPASS" "Number of callers a variant should be present in to pass"
                            :default 2 :parse-fn #(Integer/parseInt %)]
+                          [nil "--names NAMES"
+                           "Comma separated list of names corresponding to VCFs for annotating output"
+                           :default "" :parse-fn #(string/split % #",")]
                           [nil "--nofiltered" "Remove filtered variants before performing ensemble calls"]
                           ["-h" "--help"]])]
     (cond

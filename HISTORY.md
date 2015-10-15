@@ -1,3 +1,7 @@
+## 0.1.4 (15 October 2015)
+
+- Annotate ensemble variant calls with names of callers supporting an ensemble variant.
+
 ## 0.1.3 (13 October 2015)
 
 - Support latest GATK and htsjdk to handle issues with gVCFs on GATK 3.4 and
