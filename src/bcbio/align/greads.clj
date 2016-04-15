@@ -25,7 +25,7 @@
   (cram/do-index fname)
   (let [out-file (fsp/add-file-part fname (eprep/region->safestr region) tmp-dir ".bam")]
     (itx/run-cmd out-file
-                 "scramble -I cram -O bam -r ~{ref-file} "
-                 "-R ~{(eprep/region->samstr region)} ~{fname} ~{out-file}")
+                 "samtools view -b -T ~{ref-file} "
+                 "~{fname} ~{(eprep/region->samstr region)} > ~{out-file}")
     (bam/do-index out-file)
     out-file))

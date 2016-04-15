@@ -78,7 +78,7 @@
     (itx/run-cmd out-file
                  "freebayes -b ~{bam-file} --variant-input ~{vcf-file} --only-use-input-alleles "
                  "--min-repeat-entropy 1 ~{ploidy-str} "
-                 "--use-best-n-alleles 4 --min-mapping-quality 20 "
+                 "--use-best-n-alleles 4 --min-mapping-quality 20 --genotype-qualities "
                  "-f ~{ref-file} -r ~{(eprep/region->freebayes region)} -s ~{sample-file}  | "
                  "vcfuniqalleles | ~{filter_str} | vcffixup - | ~{nosupport-filter} | "
                  "awk -F$'\\t' -v OFS='\\t' '{if ($0 !~ /^#/ && $6 < 1) $6 = 1 } {print}' | "

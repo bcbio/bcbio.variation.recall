@@ -1,3 +1,8 @@
+## 0.1.5 (15 April 2016)
+
+- Add genotype qualities (GQ) to output of FreeBayes recalls.
+- Use samtools instead of scramble for CRAM integration.
+
 ## 0.1.4 (15 October 2015)
 
 - Annotate ensemble variant calls with names of callers supporting an ensemble variant.
