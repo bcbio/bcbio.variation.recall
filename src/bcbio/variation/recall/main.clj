@@ -29,18 +29,18 @@
 
 (defn -main [& args]
   (if-let [to-run (get progs (keyword (first args)))]
-    (try
-      (apply (:main to-run) (rest args))
-      (catch Exception e
-        (timbre/error e)
-        (shutdown-agents)
-        (System/exit 1))
-      (finally
-        (shutdown-agents)
-        (System/exit 0)))
+    (do
+      (try
+        (apply (:main to-run) (rest args))
+        (catch Exception e
+          (timbre/error e)
+          (shutdown-agents)
+          (System/exit 1)))
+      (shutdown-agents)
+      (System/exit 0))
     (do
       (println "Parallel merging, squaring off and ensemble calling for genomic variants\n")
       (println "Commands:")
       (doseq [k (sort (keys progs))]
         (println (format "%-15s %s" (name k) (-> progs k :doc))))
-      (System/exit 1))))
+      (System/exit 0))))

@@ -64,9 +64,7 @@
   "Prepare BED file of shared breakpoints for all samples in supplied files."
   [vcf-files ref-file work-dir config]
   (let [split-dir (fsp/safe-mkdir (io/file work-dir "split" (vcfutils/region->fileext (:region config))))
-        vcf-samples (reduce (fn [coll vcf-file]
-                              (concat coll (map (fn [s] [vcf-file s]) (vcfutils/get-samples vcf-file))))
-                            [] vcf-files)
+        vcf-samples (mapcat #(for [s (vcfutils/get-samples %)] [% s]) vcf-files)
         out-file (fsp/add-file-part (first vcf-files) (format "combo-%s-splitpoints" (count vcf-samples))
                                     split-dir ".bed")
         bp-info (rmap (fn [[v s]] (vcf-breakpoints v s ref-file work-dir split-dir config)) vcf-samples

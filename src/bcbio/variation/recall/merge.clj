@@ -62,13 +62,15 @@
         input-list (str (fsp/file-root out-file) "-combineinputs.list")]
     (when (itx/needs-run? out-file)
       (spit input-list (string/join "\n" (map eprep/bgzip-index-vcf vcf-files))))
-    (itx/run-cmd out-file
-                 "gatk-framework -Xms250m -Xmx~{(eprep/gatk-mem vcf-files)} -XX:+UseSerialGC "
-                 "-T CombineVariants -R ~{ref-file} "
-                 "-L ~{(eprep/region->samstr region)} --out ~{out-file} "
-                 "--genotypemergeoption REQUIRE_UNIQUE --logging_level ERROR "
-                 "--suppressCommandLineHeader --setKey null "
-                 "-U LENIENT_VCF_PROCESSING -V ~{input-list}")
+    (itx/with-temp-dir [tmp-dir (fs/parent out-file)]
+      (itx/run-cmd out-file
+                   "gatk-framework -Xms250m -Xmx~{(eprep/gatk-mem vcf-files)} -XX:+UseSerialGC "
+                   "-Djava.io.tmpdir=~{tmp-dir} "
+                   "-T CombineVariants -R ~{ref-file} "
+                   "-L ~{(eprep/region->samstr region)} --out ~{out-file} "
+                   "--genotypemergeoption REQUIRE_UNIQUE --logging_level ERROR "
+                   "--suppressCommandLineHeader --setKey null "
+                   "-U LENIENT_VCF_PROCESSING -V ~{input-list}"))
     (eprep/bgzip-index-vcf out-file)))
 
 (defmethod region-merge :bcftools

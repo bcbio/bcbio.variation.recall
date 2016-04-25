@@ -1,3 +1,13 @@
+## 0.1.6 (in progress)
+
+- Handle larger merge sizes with additional memory specifications up to 3000 or
+  more samples.
+- Use local temporary directories for GATK calls, avoiding filling up temporary
+  space. Thanks to Roman Valls Guimerà.
+- Correctly parse sample names from large numbers of inputs without causing
+  overflow error.
+- Do not silently exit if running into Java memory errors.
+
 ## 0.1.5 (15 April 2016)
 
 - Add genotype qualities (GQ) to output of FreeBayes recalls.
