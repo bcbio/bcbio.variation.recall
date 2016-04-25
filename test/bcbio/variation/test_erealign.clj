@@ -48,9 +48,9 @@
     (erealign/ensemble-vcfs vcf-files [bam-file] ref-file out-file config) => out-file))
 
 (facts "Calculate ensemble set of variants using intersection and n out of x counting."
-  (let [out-file (str (io/file work-dir "NA12878-2-ensemble.vcf.gz"))
+  (let [out-file (str (io/file work-dir "NA12878-2-ensemble.vcf"))
         econfig (assoc config :numpass 2 :nofiltered true)]
-    (eintersect/ensemble-vcfs vcf-files ref-file out-file econfig) => out-file))
+    (eintersect/ensemble-vcfs vcf-files ref-file out-file econfig) => (format "%s.gz" out-file)))
 
 (facts "Identify split breakpoints for parallel execution"
   (let [out-file (str (io/file data-dir "work" "split" "NA12878-10-freebayes-combo-3-pregions.bed"))]

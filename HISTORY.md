@@ -1,4 +1,4 @@
-## 0.1.6 (in progress)
+## 0.1.6 (25 April 2016)
 
 - Handle larger merge sizes with additional memory specifications up to 3000 or
   more samples.
@@ -7,6 +7,7 @@
 - Correctly parse sample names from large numbers of inputs without causing
   overflow error.
 - Do not silently exit if running into Java memory errors.
+- Automatically convert ensemble output files to bgzipped output.
 
 ## 0.1.5 (15 April 2016)
 

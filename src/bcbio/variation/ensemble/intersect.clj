@@ -73,35 +73,36 @@
 
 (defn ensemble-vcfs
   "Calculate ensemble calls using intersection counting from a set of input VCFs"
-  [orig-vcf-files ref-file out-file options]
-  (fsp/safe-mkdir (fs/parent out-file))
-  (when (itx/needs-run? out-file)
-    (let [bg-vcf-files (rmap eprep/bgzip-index-vcf orig-vcf-files (:cores options))
-          work-dir (fsp/safe-mkdir (str (fsp/file-root out-file) "-work"))
-          vcf-files (vcfsample/consistent-order (rmap #(maybe-nofiltered % bg-vcf-files work-dir options)
-                                                      bg-vcf-files)
-                                                work-dir)
-          isec-file (intersect-vcfs vcf-files work-dir out-file options)]
-      (with-open [rdr (io/reader isec-file)
-                  vc-getter (apply vc/get-vcf-retriever (cons ref-file vcf-files))]
-        (vc/write-vcf-w-template (first vcf-files) {:out out-file}
-                                 (map (comp (get-rep-vc vc-getter vcf-files (:names options)) parse-isec-line)
-                                      (line-seq rdr))
-                                 :header-update-fn (apply vc/merge-headers vcf-files)
-                                 :new-md #{(VCFInfoHeaderLine. "CALLERS" VCFHeaderLineCount/UNBOUNDED
-                                                               VCFHeaderLineType/String
-                                                               "Individual caller support")}))
-      (eprep/bgzip-index-vcf out-file)
-      ;(fsp/remove-path work-dir)
-      ))
-  out-file)
+  [orig-vcf-files ref-file orig-out-file options]
+  (let [out-file (if (.endsWith orig-out-file ".gz") orig-out-file (format "%s.gz" orig-out-file))]
+    (fsp/safe-mkdir (fs/parent out-file))
+    (when (itx/needs-run? out-file)
+      (let [bg-vcf-files (rmap eprep/bgzip-index-vcf orig-vcf-files (:cores options))
+            work-dir (fsp/safe-mkdir (str (fsp/file-root out-file) "-work"))
+            vcf-files (vcfsample/consistent-order (rmap #(maybe-nofiltered % bg-vcf-files work-dir options)
+                                                        bg-vcf-files)
+                                                  work-dir)
+            isec-file (intersect-vcfs vcf-files work-dir out-file options)]
+        (with-open [rdr (io/reader isec-file)
+                    vc-getter (apply vc/get-vcf-retriever (cons ref-file vcf-files))]
+          (vc/write-vcf-w-template (first vcf-files) {:out out-file}
+                                   (map (comp (get-rep-vc vc-getter vcf-files (:names options)) parse-isec-line)
+                                        (line-seq rdr))
+                                   :header-update-fn (apply vc/merge-headers vcf-files)
+                                   :new-md #{(VCFInfoHeaderLine. "CALLERS" VCFHeaderLineCount/UNBOUNDED
+                                                                 VCFHeaderLineType/String
+                                                                 "Individual caller support")}))
+        (eprep/bgzip-index-vcf out-file)
+                                        ;(fsp/remove-path work-dir)
+        ))
+    out-file))
 
 (defn- usage [options-summary]
   (->> ["Ensemble calling for samples: combine multiple VCF caller outputs into a single callset."
         ""
         "Usage: bcbio-variation-recall ensemble [options] out-file ref-file [<vcf-files or list-files>]"
         ""
-        "   out-file:   VCF (or bgzipped VCF) file to write merged output to"
+        "   out-file:   bgzipped VCF file to write merged output to"
         "   ref-file:   FASTA format genome reference file"
         "  <remaining>: VCF files to include for building a final ensemble callset."
         "               Specify on the command line or as text files containing paths to files."

@@ -66,7 +66,7 @@ requires [leiningen].
 
     Usage: bcbio-variation-recall ensemble [options] out-file ref-file [<vcf-files or list-files>]
 
-       out-file:   VCF (or bgzipped VCF) file to write merged output to
+       out-file:   bgzipped VCF file to write merged output to
        ref-file:   FASTA format genome reference file
       <remaining>: VCF files to include for building a final ensemble callset.
                    Specify on the command line or as text files containing paths to files.
@@ -87,7 +87,6 @@ for pulling them together. The following command line programs need to be on
 your path:
 
 - [freebayes][freebayes]
-- [glia][glia]
 - [vcflib][vcflib]
 - [GATK MIT licensed framework][gatk-framework]
 - [vt]
@@ -96,7 +95,6 @@ your path:
 - [samtools 1.x][samtools]
 - [sambamba]
 - [platypus]
-- [scramble, from staden io_lib][scramble]
 
 The [bcbio-nextgen][bcbio-nextgen] pipeline installs all this software automatically.
 
