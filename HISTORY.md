@@ -1,3 +1,7 @@
+## 0.1.7 (15 August 2016)
+
+- Avoid FreeBayes error when running `--variant-input` without an empty VCF.
+
 ## 0.1.6 (25 April 2016)
 
 - Handle larger merge sizes with additional memory specifications up to 3000 or

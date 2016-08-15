@@ -75,14 +75,16 @@
         filter_str (string/join " | " (map #(format "bcftools filter -S 0 -e 'AC > 0 && %s' 2> /dev/null" %)
                                            filters))]
     (spit sample-file sample)
-    (itx/run-cmd out-file
-                 "freebayes -b ~{bam-file} --variant-input ~{vcf-file} --only-use-input-alleles "
-                 "--min-repeat-entropy 1 ~{ploidy-str} "
-                 "--use-best-n-alleles 4 --min-mapping-quality 20 --genotype-qualities "
-                 "-f ~{ref-file} -r ~{(eprep/region->freebayes region)} -s ~{sample-file}  | "
-                 "vcfuniqalleles | ~{filter_str} | vcffixup - | ~{nosupport-filter} | "
-                 "awk -F$'\\t' -v OFS='\\t' '{if ($0 !~ /^#/ && $6 < 1) $6 = 1 } {print}' | "
-                 "bgzip -c > ~{out-file}")
+    (if (vcfutils/has-variants? vcf-file)
+      (itx/run-cmd out-file
+                   "freebayes -b ~{bam-file} --variant-input ~{vcf-file} --only-use-input-alleles "
+                   "--min-repeat-entropy 1 ~{ploidy-str} "
+                   "--use-best-n-alleles 4 --min-mapping-quality 20 --genotype-qualities "
+                   "-f ~{ref-file} -r ~{(eprep/region->freebayes region)} -s ~{sample-file}  | "
+                   "vcfuniqalleles | ~{filter_str} | vcffixup - | ~{nosupport-filter} | "
+                   "awk -F$'\\t' -v OFS='\\t' '{if ($0 !~ /^#/ && $6 < 1) $6 = 1 } {print}' | "
+                   "bgzip -c > ~{out-file}")
+      (itx/safe-copy vcf-file out-file))
     (eprep/bgzip-index-vcf out-file)))
 
 (defmethod recall-variants :platypus

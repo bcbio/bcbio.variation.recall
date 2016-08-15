@@ -69,7 +69,7 @@
                                     split-dir ".bed")
         bp-info (rmap (fn [[v s]] (vcf-breakpoints v s ref-file work-dir split-dir config)) vcf-samples
                       (:cores config))
-        str-bp-beds (when (every? #(> (fs/size %) 0) (map :bed bp-info))
+        str-bp-beds (when (and (seq bp-info) (every? #(> (fs/size %) 0) (map :bed bp-info)))
                           (string/join " " (map :bed bp-info)))]
     [(map :vcf bp-info)
      (if str-bp-beds
