@@ -1,3 +1,7 @@
+## 0.1.8 (18 May 2018)
+
+- Fix tabix index error for variants present at position 1 of contigs.
+
 ## 0.1.7 (15 August 2016)
 
 - Avoid FreeBayes error when running `--variant-input` without an empty VCF.

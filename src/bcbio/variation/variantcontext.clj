@@ -107,7 +107,7 @@
      (variants-in-region retriever (:chr vc) (:start vc) (:end vc)))
   ([retriever space start end]
      (letfn [(get-vcs-in-source [[source fname]]
-               (with-open [vcf-iter (.query source space start end)]
+               (with-open [vcf-iter (.query source space (max 1 start) end)]
                  (doall (map #(assoc (from-vc %) :fname fname) (iterator-seq vcf-iter)))))]
        (mapcat get-vcs-in-source (map vector (:sources retriever) (:fnames retriever))))))
 
