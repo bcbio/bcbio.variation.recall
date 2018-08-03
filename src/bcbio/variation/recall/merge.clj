@@ -32,22 +32,6 @@
   (fn [& args]
     (keyword (first args))))
 
-(defn- run-bcftools
-  "Run a bcftools merge on a (potential) subset of files in a temporary directory."
-  [i vcf-files region out-dir base-file]
-  (let [out-file (fsp/add-file-part base-file (format "%s-%s" (eprep/region->safestr region) i) out-dir)
-        input-list (str (fsp/file-root out-file) "inputs.txt")]
-    (if (= 1 (count vcf-files))
-      (itx/safe-copy (io/file (first vcf-files)) (io/file out-file))
-      (do
-        (when (itx/needs-run? out-file)
-          (spit input-list (string/join "\n" (map eprep/bgzip-index-vcf vcf-files))))
-        (itx/run-cmd out-file
-                     "bcftools merge -O ~{(vcfutils/bcftools-out-type out-file)} "
-                     "-r ~{(eprep/region->samstr region)} `cat ~{input-list}` "
-                     "> ~{out-file}")))
-    (eprep/bgzip-index-vcf out-file)))
-
 (defn move-vcf
   "Move a VCF file, also handling move of tabix index if it exists."
   [orig-file new-file]
@@ -55,40 +39,19 @@
     (when (fs/exists? (str orig-file ext))
       (.renameTo (io/file (str orig-file ext)) (io/file (str new-file ext))))))
 
-(defmethod region-merge :gatk
-  ^{:doc "Merge VCFs in a region using GATK framework"}
-  [_ vcf-files region ref-file work-dir final-file]
-  (let [out-file (region-merge-outfile region work-dir final-file)
+(defmethod region-merge :bcftools
+  ^{:doc "Merge VCFs in a region using btools"}
+  [_ vcf-files region ref-file final-file work-dir]
+  (let [out-file (if work-dir (region-merge-outfile region work-dir final-file) final-file)
         input-list (str (fsp/file-root out-file) "-combineinputs.list")]
     (when (itx/needs-run? out-file)
       (spit input-list (string/join "\n" (map eprep/bgzip-index-vcf vcf-files))))
     (itx/with-temp-dir [tmp-dir (fs/parent out-file)]
       (itx/run-cmd out-file
-                   "gatk-framework -Xms250m -Xmx~{(eprep/gatk-mem vcf-files)} -XX:+UseSerialGC "
-                   "-Djava.io.tmpdir=~{tmp-dir} "
-                   "-T CombineVariants -R ~{ref-file} "
-                   "-L ~{(eprep/region->samstr region)} --out ~{out-file} "
-                   "--genotypemergeoption REQUIRE_UNIQUE --logging_level ERROR "
-                   "--suppressCommandLineHeader --setKey null "
-                   "-U LENIENT_VCF_PROCESSING -V ~{input-list}"))
+                   "bcftools merge -O ~{(vcfutils/bcftools-out-type out-file)} "
+                   "-r ~{(eprep/region->samstr region)} -l ~{input-list} "
+                   "-o ~{out-file}"))
     (eprep/bgzip-index-vcf out-file)))
-
-(defmethod region-merge :bcftools
-  ^{:doc "Merge VCFs within a region using bcftools."}
-  [_ vcf-files region ref-file work-dir final-file]
-  (let [group-size 5000
-        out-file (region-merge-outfile region work-dir final-file)]
-    (when (itx/needs-run? out-file)
-      (itx/with-temp-dir [tmp-dir (fs/parent out-file)]
-        (let [final-vcf (loop [work-files vcf-files
-                               i 0]
-                          (if (= 1 (count work-files))
-                            (first work-files)
-                            (let [merged (map-indexed (fn [j xs] (run-bcftools (+ i j) xs region tmp-dir out-file))
-                                                      (partition-all group-size work-files))]
-                              (recur merged (+ i (count merged))))))]
-          (move-vcf final-vcf out-file))))
-    out-file))
 
 (defmethod region-merge :vcflib
   ^{:doc "Merge VCFs within a region using tabix and vcflib"}
@@ -151,7 +114,7 @@
   [orig-vcf-files ref-file out-file config]
   (prep-by-region (fn [vcf-files region out-dir]
                     (vcfutils/ensure-no-dup-samples vcf-files)
-                    (region-merge :gatk vcf-files region ref-file out-dir out-file))
+                    (region-merge :bcftools vcf-files region ref-file out-file out-dir))
                   orig-vcf-files ref-file out-file config))
 
 (defn- usage [options-summary]

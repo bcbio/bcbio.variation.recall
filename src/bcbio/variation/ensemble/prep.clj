@@ -92,24 +92,6 @@
   (fn [& args]
     (keyword (first args))))
 
-(defmethod create-union :gatk
-  ^{:doc "Use GATK CombineVariants to merge multiple input files with sites-only output"}
-  [_ vcf-files ref-file region out-dir]
-  (let [out-file (str (io/file out-dir (str "union-" (region->safestr region) ".vcf.gz")))
-        variant-str (string/join " " (map #(str "--variant " (bgzip-index-vcf %)) vcf-files))]
-    (itx/with-temp-dir [tmp-dir (fs/parent out-file)]
-      (itx/run-cmd out-file
-                   "gatk-framework -Xms250m -Xmx~{(gatk-mem vcf-files)} -XX:+UseSerialGC "
-                   "-Djava.io.tmpdir=~{tmp-dir} "
-                   "-T CombineVariants -R ~{ref-file} "
-                   "-L ~{(region->samstr region)} --out ~{out-file} "
-                   "--minimalVCF --sites_only "
-                   "--genotypemergeoption UNSORTED "
-                   "--suppressCommandLineHeader --setKey null "
-                   "-U LENIENT_VCF_PROCESSING --logging_level ERROR "
-                   "~{variant-str}"))
-    (bgzip-index-vcf out-file)))
-
 (defmethod create-union :bcftools
   ^{:doc "Use bcftools isec and custom awk command to handle merge of multiple files"}
   [_ vcf-files ref-file region out-dir]

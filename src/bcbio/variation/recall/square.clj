@@ -140,19 +140,17 @@
     (eprep/bgzip-index-vcf out-file)))
 
 (defn union-variants
-  "Use GATK CombineVariants to merge multiple input files"
-  [vcf-files ref-file region out-file]
-  (let [variant-str (string/join " " (map #(str "--variant " (eprep/bgzip-index-vcf %)) vcf-files))]
+  ^{:doc "Merge single sample VCFs into combined VCF"}
+  [vcf-files region ref-file out-file]
+  (let [input-list (str (fsp/file-root out-file) "-combineinputs.list")]
+    (when (itx/needs-run? out-file)
+      (spit input-list (string/join "\n" (filter vcfutils/has-variants? (map eprep/bgzip-index-vcf vcf-files)))))
     (itx/with-temp-dir [tmp-dir (fs/parent out-file)]
       (itx/run-cmd out-file
-                   "gatk-framework -Xms250m -Xmx~{(eprep/gatk-mem vcf-files)} -XX:+UseSerialGC "
-                   "-Djava.io.tmpdir=~{tmp-dir} "
-                   "-T CombineVariants -R ~{ref-file} "
-                   "-L ~{(eprep/region->samstr region)} --out ~{out-file} "
-                   "--genotypemergeoption UNSORTED "
-                   "--suppressCommandLineHeader --setKey null "
-                   "-U LENIENT_VCF_PROCESSING --logging_level ERROR "
-                   "~{variant-str}"))
+                   "bcftools concat --allow-overlaps "
+                   "-O ~{(vcfutils/bcftools-out-type out-file)} "
+                   "-r ~{(eprep/region->samstr region)} -f ~{input-list} "
+                   "-o ~{out-file}"))
     (eprep/bgzip-index-vcf out-file)))
 
 (defn- sample-by-region
@@ -172,7 +170,7 @@
           (intersect-variants (:region fnames) union-vcf ref-file (:existing fnames))
           (unique-variants union-vcf (:region fnames) ref-file (:needcall fnames))
           (recall-variants sample region (:needcall fnames) region-bam-file ref-file (:recall fnames) config)
-          (union-variants [(:recall fnames) (:existing fnames)] ref-file region out-file))))
+          (union-variants [(:recall fnames) (:existing fnames)] region ref-file out-file))))
     out-file))
 
 (defn- sample-by-region-prep
@@ -217,7 +215,7 @@
     - For each sample, square off using `sample-by-region`
     - Merge all variant files in the region together."
   [vcf-files bam-files region ref-file dirs out-file config]
-  (let [union-vcf (eprep/create-union :gatk vcf-files ref-file region (:union dirs))
+  (let [union-vcf (eprep/create-union :bcftools vcf-files ref-file region (:union dirs))
         config (assoc config :ploidy (get-existing-ploidy vcf-files region))
         region-square-dir (fsp/safe-mkdir (io/file (:square dirs) (get region :chrom "nochrom")
                                                    (eprep/region->safestr region)))
@@ -232,7 +230,7 @@
                          (into [])
                          (sort-by first)
                          (map second))]
-    (merge/region-merge :gatk recall-vcfs region ref-file region-merge-dir out-file)))
+    (merge/region-merge :bcftools recall-vcfs region ref-file out-file region-merge-dir)))
 
 (defn- sample-to-bam-map*
   "Prepare a map of sample names to BAM files."

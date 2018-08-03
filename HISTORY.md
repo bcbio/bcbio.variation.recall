@@ -1,3 +1,8 @@
+## 0.1.9 (3 August 2018)
+
+- Remove usage of gatk-framework, which is no longer included in bcbio. Replace
+  GATK usage with bcftools merge and concat.
+
 ## 0.1.8 (18 May 2018)
 
 - Fix tabix index error for variants present at position 1 of contigs.

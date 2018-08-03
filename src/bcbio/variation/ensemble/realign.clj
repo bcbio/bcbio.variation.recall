@@ -64,7 +64,7 @@
                                                             sample (eprep/region->safestr region) i)))]
                          (square/subset-sample-region x sample region out-file)))
                          vcf-files)
-        union-vcf (eprep/create-union :gatk prep-inputs ref-file region union-dir)]
+        union-vcf (eprep/create-union :bcftools prep-inputs ref-file region union-dir)]
     (realign-and-call region union-vcf bam-file ref-file work-dir config)))
 
 (defn by-region-multi
@@ -79,7 +79,7 @@
                         (map (fn [[sample s-vcfs]]
                                (by-region sample region (map second s-vcfs) (get bam-files sample)
                                           ref-file dirs region-e-dir config))))]
-    (merge/region-merge :gatk final-vcfs region ref-file region-merge-dir out-file)))
+    (merge/region-merge :bcftools final-vcfs region ref-file out-file region-merge-dir)))
 
 (defn ensemble-vcfs
   "Combine VCF files with squaring off by recalling at uncalled variant positions."
