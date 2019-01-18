@@ -69,9 +69,9 @@
   [sample region vcf-file bam-file ref-file out-file config]
   (let [sample-file (str (fsp/file-root out-file) "-samples.txt")
         ploidy-str (if (:ploidy config) (format "-p %s" (:ploidy config)) "")
-        filters ["NUMALT == 0", "%QUAL < 5", "AF[*] <= 0.5 && DP < 4",
-                 "AF[*] <= 0.5 && DP < 13 && %QUAL < 10","AF[*] > 0.5 && DP < 4 && %QUAL < 50"]
-        nosupport-filter "bcftools filter -S . -e 'AC == 0 && DP < 4' 2> /dev/null"
+        filters ["NUMALT == 0", "%QUAL < 5", "AF[*] <= 0.5 && max(FORMAT/DP) < 4",
+                 "AF[*] <= 0.5 && max(FORMAT/DP) < 13 && %QUAL < 10","AF[*] > 0.5 && max(FORMAT/DP) < 4 && %QUAL < 50"]
+        nosupport-filter "bcftools filter -S . -e 'AC == 0 && max(FORMAT/DP) < 4' 2> /dev/null"
         filter_str (string/join " | " (map #(format "bcftools filter -S 0 -e 'AC > 0 && %s' 2> /dev/null" %)
                                            filters))]
     (spit sample-file sample)
@@ -126,9 +126,9 @@
   ^{:doc "Perform variant recalling at specified positions with samtools.
           XXX Curently uses normalization instead of constrained calling."}
   [sample region vcf-file bam-file ref-file out-file config]
-  (let [filters ["AC[0] / AN <= 0.5 && DP < 4 && %QUAL < 20"
-                 "DP < 13 && %QUAL < 10"
-                 "AC[0] / AN > 0.5 && DP < 4 && %QUAL < 50"]
+  (let [filters ["AC[0] / AN <= 0.5 && max(FORMAT/DP) < 4 && %QUAL < 20"
+                 "max(FORMAT/DP) < 13 && %QUAL < 10"
+                 "AC[0] / AN > 0.5 && max(FORMAT/DP) < 4 && %QUAL < 50"]
         filter_str (string/join " | " (map #(format "bcftools filter -e '%s' 2> /dev/null" %) filters))]
     (itx/run-cmd out-file
                  "samtools mpileup -f ~{ref-file} -t DP -u -g -r ~{(eprep/region->samstr region)} "

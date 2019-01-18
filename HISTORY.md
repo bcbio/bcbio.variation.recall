@@ -1,3 +1,8 @@
+## 0.2.1 (17 Jan 2019)
+
+- Clarify filters on depth (DP) which fail on recent bcftools when present 
+  in both INFO and FORMAT key/values.
+
 ## 0.1.9 (3 August 2018)
 
 - Remove usage of gatk-framework, which is no longer included in bcbio. Replace
