@@ -32,15 +32,21 @@
                "~{(eprep/bgzip-index-vcf vcf-file)} > ~{out-file}")
   (eprep/bgzip-index-vcf out-file :remove-orig? true))
 
+(def ^{:doc "Filter to remove problematic annotations which can have incorrect numbers of fields
+             in complex deletion/insertion cases with multiple alleles."}
+  freebayes-field-filter
+  "bcftools annotate -x FORMAT/AD,FORMAT/AO,FORMAT/QA,FORMAT/GL,INFO/QA | ")
+
 (defn- intersect-variants
   "Retrieve VCF variants present in both in-file and cmp-file."
-  [in-file cmp-file ref-file out-file]
-  (cond
-    (not (vcfutils/has-variants? in-file)) (itx/safe-copy in-file out-file)
-    (not (vcfutils/has-variants? cmp-file)) (itx/safe-copy cmp-file out-file)
-    :else (itx/run-cmd out-file
-                       "vcfintersect -r ~{ref-file} -i ~{cmp-file} ~{in-file} | "
-                       "bgzip > ~{out-file}"))
+  [in-file cmp-file ref-file out-file caller]
+  (let [field-filter (if (= :freebayes (keyword caller)) freebayes-field-filter "")]
+    (cond
+      (not (vcfutils/has-variants? in-file)) (itx/safe-copy in-file out-file)
+      (not (vcfutils/has-variants? cmp-file)) (itx/safe-copy cmp-file out-file)
+      :else (itx/run-cmd out-file
+                         "vcfintersect -r ~{ref-file} -i ~{cmp-file} ~{in-file} | ~{field-filter}"
+                         "bgzip > ~{out-file}")))
   (eprep/bgzip-index-vcf out-file :remove-orig? true))
 
 (defn- unique-variants
@@ -81,6 +87,7 @@
                    "--min-repeat-entropy 1 ~{ploidy-str} "
                    "--use-best-n-alleles 4 --min-mapping-quality 20 --genotype-qualities "
                    "-f ~{ref-file} -r ~{(eprep/region->freebayes region)} -s ~{sample-file}  | "
+                   "~{freebayes-field-filter}"
                    "vcfuniqalleles | ~{filter_str} | vcffixup - | ~{nosupport-filter} | "
                    "awk -F$'\\t' -v OFS='\\t' '{if ($0 !~ /^#/ && $6 < 1) $6 = 1 } {print}' | "
                    "bgzip -c > ~{out-file}")
@@ -142,16 +149,20 @@
 (defn union-variants
   ^{:doc "Merge single sample VCFs into combined VCF"}
   [vcf-files region ref-file out-file]
-  (let [input-list (str (fsp/file-root out-file) "-combineinputs.list")]
-    (when (itx/needs-run? out-file)
-      (spit input-list (string/join "\n" (filter vcfutils/has-variants? (map eprep/bgzip-index-vcf vcf-files)))))
-    (itx/with-temp-dir [tmp-dir (fs/parent out-file)]
-      (itx/run-cmd out-file
-                   "bcftools concat --allow-overlaps "
-                   "-O ~{(vcfutils/bcftools-out-type out-file)} "
-                   "-r ~{(eprep/region->samstr region)} -f ~{input-list} "
-                   "-o ~{out-file}"))
-    (eprep/bgzip-index-vcf out-file)))
+  (when (itx/needs-run? out-file)
+    (let [input-list (str (fsp/file-root out-file) "-combineinputs.list")
+          input-vcfs (filter vcfutils/has-variants? (map eprep/bgzip-index-vcf vcf-files))]
+      (if (empty? input-vcfs)
+        (itx/safe-copy (first vcf-files) out-file)
+        (do
+          (spit input-list (string/join "\n" input-vcfs))
+          (itx/with-temp-dir [tmp-dir (fs/parent out-file)]
+            (itx/run-cmd out-file
+                         "bcftools concat --allow-overlaps "
+                         "-O ~{(vcfutils/bcftools-out-type out-file)} "
+                         "-r ~{(eprep/region->samstr region)} -f ~{input-list} "
+                         "-o ~{out-file}"))))))
+  (eprep/bgzip-index-vcf out-file))
 
 (defn- sample-by-region
   "Square off a specific sample in a genomic region, given all possible variants.
@@ -167,7 +178,7 @@
       (itx/with-temp-dir [tmp-dir (fs/parent out-file)]
         (let [region-bam-file (greads/subset-in-region bam-file ref-file region tmp-dir)]
           (subset-sample-region vcf-file sample region (:region fnames))
-          (intersect-variants (:region fnames) union-vcf ref-file (:existing fnames))
+          (intersect-variants (:region fnames) union-vcf ref-file (:existing fnames) (:caller config))
           (unique-variants union-vcf (:region fnames) ref-file (:needcall fnames))
           (recall-variants sample region (:needcall fnames) region-bam-file ref-file (:recall fnames) config)
           (union-variants [(:recall fnames) (:existing fnames)] region ref-file out-file))))

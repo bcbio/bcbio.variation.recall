@@ -3,7 +3,7 @@
             [bcbio.variation.recall.square]
             [bcbio.variation.ensemble.intersect]
             [clojure.java.io :as io]
-            [taoensso.timbre :as timbre])
+            [io.aviso.exception :refer [write-exception]])
   (:gen-class))
 
 (defn version
@@ -33,7 +33,7 @@
       (try
         (apply (:main to-run) (rest args))
         (catch Exception e
-          (timbre/error e)
+          (write-exception e)
           (shutdown-agents)
           (System/exit 1)))
       (shutdown-agents)

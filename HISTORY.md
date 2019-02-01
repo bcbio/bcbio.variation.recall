@@ -1,6 +1,13 @@
+## 0.2.2 (1 Feb 2019)
+
+- Handle input to bcftools concat when all original files have no variants.
+- Remove problematic INFO and FORMAT fields for FreeBayes. In complex decomposed, it
+  retains more AD/AO/QA/GL fields then the headers allow, causing bcftools failures.
+- Fix logging to correctly raise errors on failures.
+
 ## 0.2.1 (17 Jan 2019)
 
-- Clarify filters on depth (DP) which fail on recent bcftools when present 
+- Clarify filters on depth (DP) which fail on recent bcftools when present
   in both INFO and FORMAT key/values.
 
 ## 0.1.9 (3 August 2018)
