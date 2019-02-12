@@ -1,3 +1,7 @@
+## 0.2.3 (12 Feb 2019)
+
+- Fix wrapper script to avoid java in `/bin/java` without `JAVA_HOME` set.
+
 ## 0.2.2 (1 Feb 2019)
 
 - Handle input to bcftools concat when all original files have no variants.

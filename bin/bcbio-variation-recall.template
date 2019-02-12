@@ -8,9 +8,11 @@ export LC_ALL=en_US.UTF-8
 jar="$(cd "$(dirname "$0")" && pwd -P)"/"$(basename "$0")"
 
 java=java
-if [ -e "$JAVA_HOME/bin/java" ]
-then
-java="$JAVA_HOME/bin/java"
+# if JAVA_HOME is set (non-empty), use it. Otherwise keep "java"
+if [ -n "${JAVA_HOME:=}" ]; then
+  if [ -e "$JAVA_HOME/bin/java" ]; then
+      java="$JAVA_HOME/bin/java"
+  fi
 fi
 
 # extract <emory and system property Java arguments from the list of provided arguments
