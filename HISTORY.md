@@ -1,3 +1,8 @@
+## 0.2.4 (22 Feb 2019)
+
+- Fix platypus calling to correctly add contig headers to avoid GATK4 GatherVcf
+  errors.
+
 ## 0.2.3 (12 Feb 2019)
 
 - Fix wrapper script to avoid java in `/bin/java` without `JAVA_HOME` set.

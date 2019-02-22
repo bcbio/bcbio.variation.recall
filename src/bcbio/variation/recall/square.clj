@@ -97,6 +97,7 @@
 (defmethod recall-variants :platypus
   ^{:doc "Perform variant recalling at specified positions with Platypus.
           Perform post-filtration of platypus variant calls.
+          Add a contig header line to output to satisfy GATK and bcftools downstream.
           Removes hard Q20 filter and replaces with NA12878/GiaB tuned depth
           and quality based filter.
           Performs normalization and removal of duplicate alleles.
@@ -108,12 +109,15 @@
         nosupport-filter "bcftools filter -S . -e 'TR == 0 && TC < 4' 2> /dev/null"
         filter_str (string/join " | " (map #(format "bcftools filter -S 0 -e 'TR > 0 && %s' 2> /dev/null" %) filters))]
     (itx/run-cmd out-file
+                 "awk '{printf(\"##contig=<ID=%s,length=%d>\\n\",$1,$2);}' "
+                 "~{ref-file}.fai > ~{out-file}-header.txt && "
                  "platypus callVariants --bamFiles=~{bam-file} --regions=~{(eprep/region->samstr region)} "
                  "--hapScoreThreshold 10 --scThreshold 0.99 --filteredReadsFrac 0.9 "
                  "--rmsmqThreshold 20 --qdThreshold 0 --abThreshold 0.0 --minVarFreq 0.0 "
                  "--refFile=~{ref-file} --source=~{vcf-file} --minPosterior=0 --getVariantsFromBAMs=0 "
                  "--logFileName /dev/null --verbosity=1 --output - | "
                  "awk -F$'\\t' -v OFS='\\t' '{if ($0 !~ /^#/) $7 = \"PASS\" } {print}' | "
+                 "grep -v '##contig' | bcftools annotate -h ~{out-file}-header.txt | "
                  "vt normalize -r ~{ref-file} -q - 2> /dev/null | vcfuniqalleles | "
                  "~{filter_str} | vcffixup - | ~{nosupport-filter} | bgzip -c > ~{out-file}")
     (eprep/bgzip-index-vcf out-file)))
