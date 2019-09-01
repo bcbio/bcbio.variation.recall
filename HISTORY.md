@@ -1,3 +1,7 @@
+## 0.2.5 (1 Sep 2019)
+
+- Handle input VCFs with differing cases in REF and ALT alleles.
+
 ## 0.2.4 (22 Feb 2019)
 
 - Fix platypus calling to correctly add contig headers to avoid GATK4 GatherVcf

@@ -26,7 +26,8 @@
   [line]
   (let [[chrom str-start refa alta intersects] (string/split line #"\t")
         start (dec (Integer/parseInt str-start))]
-    {:chr chrom :start start :refa refa :alta (string/split alta #",")
+    {:chr chrom :start start :refa (clojure.string/upper-case refa)
+     :alta (map clojure.string/upper-case (string/split alta #","))
      :end (->> (cons refa (string/split alta #","))
               (map count)
               (apply max)
@@ -50,8 +51,8 @@
           rep-vcs (->> (vc/variants-in-region vc-getter line)
                        (filter #(= rep-file (:fname %)))
                        (filter #(= (:start line) (dec (:start %))))
-                       (filter #(= (:refa line) (.getDisplayString (:ref-allele %))))
-                       (filter #(= (:alta line) (map (fn [x] (.getDisplayString x)) (:alt-alleles %)))))
+                       (filter #(= (:refa line) (:ref-allele %)))
+                       (filter #(= (:alta line) (:alt-alleles %))))
           cur-names (when (seq names) (map (partial nth names) (:vc-indices line)))]
       (if (> (count rep-vcs) 0)
         (-> rep-vcs first :vc vc/remove-filter (ann-vc-w-names cur-names))

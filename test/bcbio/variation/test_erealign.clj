@@ -23,6 +23,8 @@
                vcf-files (map #(str (io/file data-dir %))
                               ["NA12878-10-freebayes.vcf" "NA12878-10-gatk.vcf"
                                "NA12878-10-gatk-haplotype.vcf"])
+               case-vcf-files (map #(str (io/file data-dir %))
+                              ["NA12878-10-freebayes.vcf" "NA12878-10-freebayes-lowercase.vcf"])
                merge-vcf-file (str (io/file r-data-dir "NA12878-1-10-gatk-haplotype.vcf"))
                recall-bed (str (io/file r-data-dir "recall-regions.bed"))
                work-dir (str (io/file data-dir "work"))
@@ -51,6 +53,11 @@
   (let [out-file (str (io/file work-dir "NA12878-2-ensemble.vcf"))
         econfig (assoc config :numpass 2 :nofiltered true)]
     (eintersect/ensemble-vcfs vcf-files ref-file out-file econfig) => (format "%s.gz" out-file)))
+
+(facts "Calculate ensemble set of variants with case differences"
+  (let [out-file (str (io/file work-dir "NA12878-2-ensemble-case.vcf"))
+        econfig (assoc config :numpass 2 :nofiltered true)]
+    (eintersect/ensemble-vcfs case-vcf-files ref-file out-file econfig) => (format "%s.gz" out-file)))
 
 (facts "Identify split breakpoints for parallel execution"
   (let [out-file (str (io/file data-dir "work" "split" "NA12878-10-freebayes-combo-3-pregions.bed"))]

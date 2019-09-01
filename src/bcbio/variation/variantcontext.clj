@@ -56,6 +56,8 @@
    :id (when (.hasID vc) (.getID vc))
    :ref-allele (.getReference vc)
    :alt-alleles (vec (.getAlternateAlleles vc))
+   ;:ref-allele (clojure.string/upper-case (.getDisplayString (.getReference vc)))
+   ;:alt-alleles (vec (map #(-> % .getDisplayString clojure.string/upper-case) (.getAlternateAlleles vc)))
    :type (-> vc .getType .name)
    :filters (set (.getFilters vc))
    :attributes (into {} (.getAttributes vc))
