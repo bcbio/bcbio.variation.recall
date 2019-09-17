@@ -1,3 +1,7 @@
+## 0.2.6 (17 Sep 2019)
+
+- Fix problem with not converting alleles to strings during v0.2.5 update.
+
 ## 0.2.5 (1 Sep 2019)
 
 - Handle input VCFs with differing cases in REF and ALT alleles.
